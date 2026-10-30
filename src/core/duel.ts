@@ -83,8 +83,12 @@ export class Duel {
   shots = 0;
   winner: PlayerId | 'none' | null = null;
 
-  constructor(level: LevelDef, seed = level.seed) {
+  /** decisions from earlier unpassed attempts at this level: good calls carry into the rematch. */
+  readonly carry: Decision[];
+
+  constructor(level: LevelDef, seed = level.seed, carry: Decision[] = []) {
     this.level = level;
+    this.carry = carry.slice(-16);
     this.rng = new Rng(seed);
     this.players = [{ id: 'you', hp: level.hp.you, maxHp: level.hp.you }];
     this.players.push({ id: 'r1', hp: level.hp.rival, maxHp: level.hp.rival });
@@ -599,19 +603,7 @@ export class Duel {
   // ---------- result ----------
 
   result() {
-    const total = this.decisions.length;
-    const correct = this.decisions.filter((d) => d.correct).length;
-    const accuracy = total ? correct / total : 0;
-    const won = this.winner === 'you';
-    // A constant strategy can't count as reading the odds: every move that was ever the only best move must
-    // also appear among your correct decisions (aiming at the rival when pies were likelier, at yourself when duds were).
-    const strictlyBest = new Set(this.decisions.filter((d) => d.best.length === 1).map((d) => d.best[0]));
-    const shown = new Set(this.decisions.filter((d) => d.correct).map((d) => d.choice));
-    const varied = [...strictlyBest].every((c) => shown.has(c));
-    const oddsRead = total >= 3 && accuracy >= 0.8 && varied;
-    const passed = won || oddsRead;
-    const stars = !passed ? 0 : oddsRead && accuracy >= 0.95 ? 3 : oddsRead ? 2 : 1;
-    return { total, correct, accuracy, won, oddsRead, passed, stars, over: this.phase === 'over' };
+    return evaluate([...this.carry, ...this.decisions], this.winner === 'you', this.phase === 'over', this.decisions);
   }
 
   /** Short text for tests and render_game_to_text. */
@@ -631,6 +623,28 @@ export class Duel {
       decisions: `${this.result().correct}/${this.decisions.length}`,
     };
   }
+}
+
+/**
+ * The fairness rule: a level is passed by winning OR by reading the odds (≥ 80 % solver-correct calls over at least
+ * three decisions, counting earlier attempts). Stars measure decision quality, not luck.
+ */
+export function evaluate(all: Decision[], won: boolean, over: boolean, current: Decision[] = all) {
+  const decisions = all;
+  const total = decisions.length;
+  const correct = decisions.filter((d) => d.correct).length;
+  const accuracy = total ? correct / total : 0;
+    // A constant strategy can't count as reading the odds: every move that was ever the only best move must
+    // also appear among your correct decisions (aiming at the rival when pies were likelier, at yourself when duds were).
+    const strictlyBest = new Set(decisions.filter((d) => d.best.length === 1).map((d) => d.best[0]));
+    const shown = new Set(decisions.filter((d) => d.correct).map((d) => d.choice));
+    // and the match must have asked both questions (a dud-likely and a pie-likely moment) for the odds path to count
+    const varied = strictlyBest.has('rival') && (strictlyBest.has('self') || strictlyBest.has('double')) && [...strictlyBest].every((c) => shown.has(c));
+    const oddsRead = total >= 3 && accuracy >= 0.8 && varied;
+    const passed = won || oddsRead;
+    const stars = !passed ? 0 : oddsRead && accuracy >= 0.95 ? 3 : oddsRead ? 2 : 1;
+  const matchCorrect = current.filter((d) => d.correct).length;
+  return { total, correct, accuracy, won, oddsRead, passed, stars, over, matchDecisions: current.length, matchCorrect };
 }
 
 export { ONE, ZERO };

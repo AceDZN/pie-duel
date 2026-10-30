@@ -75,8 +75,8 @@ function betValue(e: string, p: number) {
   return e === 'twoPies' ? p * p : e === 'noPie' ? q * q : e === 'exactlyOne' ? 2 * p * q : e === 'atLeastOne' ? 1 - q * q : p * q;
 }
 
-export function playMatch(level: LevelDef, strategy: Strategy, seed: number) {
-  const duel = new Duel(level, seed);
+export function playMatch(level: LevelDef, strategy: Strategy, seed: number, carry: Duel['decisions'] = []) {
+  const duel = new Duel(level, seed, carry);
   let r = (seed * 2654435761) >>> 0;
   const coin = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
   let guard = 0;
@@ -90,12 +90,15 @@ export function playMatch(level: LevelDef, strategy: Strategy, seed: number) {
 export function monteCarlo(level: LevelDef, strategy: Strategy, n = 400, seed0 = 1) {
   let won = 0;
   let passed = 0;
+  let passed2 = 0;
   let acc = 0;
   for (let i = 0; i < n; i++) {
     const r = playMatch(level, strategy, seed0 + i * 7919);
     if (r.won) won++;
     if (r.passed) passed++;
     acc += r.accuracy;
+    // a rematch carries the first attempt's calls
+    if (r.passed || playMatch(level, strategy, seed0 + i * 7919 + 1, r.duel.decisions).passed) passed2++;
   }
-  return { winRate: won / n, passRate: passed / n, accuracy: acc / n };
+  return { winRate: won / n, passRate: passed / n, passWithin2: passed2 / n, accuracy: acc / n };
 }
