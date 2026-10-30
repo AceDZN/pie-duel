@@ -88,8 +88,12 @@ export class Duel {
   /** decisions from earlier unpassed attempts at this level: good calls carry into the rematch. */
   readonly carry: Decision[];
 
+  /** scripted tutorial orders play only on the level's own first-play seed, so retries are fresh shuffles. */
+  readonly seed: number;
+
   constructor(level: LevelDef, seed = level.seed, carry: Decision[] = []) {
     this.level = level;
+    this.seed = seed;
     this.carry = carry.slice(-16);
     this.rng = new Rng(seed);
     this.players = [{ id: 'you', hp: level.hp.you, maxHp: level.hp.you }];
@@ -218,7 +222,7 @@ export class Duel {
         } else {
           shells = [...Array(def.pies).fill(0).map((): Shell => ({ kind: 'pie' })), ...Array(def.duds).fill(0).map((): Shell => ({ kind: 'dud' }))];
         }
-        if (def.order && this.loadIndex < this.level.loads.length) shells = def.order.map((k) => ({ kind: k }));
+        if (def.order && this.loadIndex < this.level.loads.length && this.seed === this.level.seed) shells = def.order.map((k) => ({ kind: k }));
         else this.rng.shuffle(shells);
         const table: FlavorTable = { choc: { pies: 0, duds: 0 }, van: { pies: 0, duds: 0 } };
         return { type: 'mag', def, shells, known: shells.map(() => false), fired: [], table };

@@ -155,7 +155,8 @@ export function wheelFace(pieSectors: number, total: number, labelA?: string) {
     g.beginPath();
     g.moveTo(256, 256);
     g.arc(256, 256, 250, (i / total) * Math.PI * 2 - Math.PI / 2, ((i + 1) / total) * Math.PI * 2 - Math.PI / 2);
-    g.fillStyle = i < pieSectors ? (i % 2 ? '#ff4fa3' : '#ff74b6') : i % 2 ? '#29c7e8' : '#6ff0ff';
+    // pieSectors < 0: a mystery wheel, sectors hidden
+    g.fillStyle = pieSectors < 0 ? (i % 2 ? '#5a4a7a' : '#7a6a9a') : i < pieSectors ? (i % 2 ? '#ff4fa3' : '#ff74b6') : i % 2 ? '#29c7e8' : '#6ff0ff';
     g.fill();
     g.strokeStyle = '#fff';
     g.lineWidth = 6;
@@ -164,7 +165,7 @@ export function wheelFace(pieSectors: number, total: number, labelA?: string) {
     g.font = `${total > 8 ? 40 : 64}px sans-serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(i < pieSectors ? '🥧' : '🎉', 256 + Math.cos(a) * 170, 256 + Math.sin(a) * 170);
+    g.fillText(pieSectors < 0 ? '?' : i < pieSectors ? '🥧' : '🎉', 256 + Math.cos(a) * 170, 256 + Math.sin(a) * 170);
   }
   g.beginPath();
   g.arc(256, 256, 40, 0, Math.PI * 2);

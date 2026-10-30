@@ -552,7 +552,7 @@ export class Stage {
       // the Tripo horn points -x: turn it so the horn faces +z (the swivel's forward)
       const inner = g.scene.clone();
       inner.rotation.y = Math.PI / 2;
-      const m = fitHeight(inner, 0.6);
+      const m = fitHeight(inner, 0.74);
       shadowsOn(m);
       swivel.add(m);
       // the model's dome has pies baked in and reads as frosted glass; the real mix shows in a clear loading jar on top
@@ -560,13 +560,13 @@ export class Stage {
         new THREE.CylinderGeometry(0.13, 0.11, 0.24, 32, 1, true),
         new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, roughness: 0.05, side: THREE.DoubleSide, depthWrite: false }),
       );
-      jar.position.set(0, 0.74, -0.02);
+      jar.position.set(0, 0.88, -0.02);
       const jarRim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.012, 8, 32), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.9, roughness: 0.3 }));
       jarRim.rotation.x = Math.PI / 2;
-      jarRim.position.set(0, 0.86, -0.02);
+      jarRim.position.set(0, 1.0, -0.02);
       swivel.add(jar, jarRim);
-      c.userData.jarY = 0.63;
-      this.barrelTip.position.set(0, 0.28, 0.34);
+      c.userData.jarY = 0.77;
+      this.barrelTip.position.set(0, 0.34, 0.42);
     } else {
       const brass = new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.9, roughness: 0.28 });
       const red = new THREE.MeshStandardMaterial({ color: 0xb3202e, metalness: 0.3, roughness: 0.4 });
@@ -1202,9 +1202,9 @@ export class Stage {
 }
 
 function fallbackTint(model: string) {
-  return model === 'rival-robo' ? 0xbfc8d6 : model === 'rival-mo' ? 0xffd27a : model === 'rival-twin' ? 0xffc0e0 : 0xffffff;
+  return model === 'rival-robo' ? 0xbfc8d6 : model === 'rival-mo' ? 0xc9a0ff : model === 'rival-twin' ? 0xffc0e0 : 0xffffff;
 }
 
 function mysteryFace() {
-  return wheelFace(0, 8, '?');
+  return wheelFace(-1, 8, '?');
 }

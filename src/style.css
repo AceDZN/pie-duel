@@ -245,6 +245,7 @@ bdi[dir='ltr'] {
 }
 .hp-row .who {
   min-width: 4.2em;
+  white-space: nowrap;
 }
 .hp-row.rival .who {
   color: var(--pink);
@@ -282,7 +283,8 @@ bdi[dir='ltr'] {
 }
 .hp-row .delta {
   position: absolute;
-  inset-inline-start: -2.4em;
+  inset-inline-end: 0.2em;
+  top: -0.3em;
   background: var(--red);
   border-radius: 8px;
   padding: 0 6px;
@@ -650,8 +652,14 @@ bdi[dir='ltr'] {
 }
 .scale-hint {
   font-size: max(11px, calc(var(--u) * 2.1));
-  color: #d8ccff;
+  color: #efe6ff;
   min-height: 1.2em;
+  background: rgba(20, 10, 40, 0.7);
+  border-radius: 999px;
+  padding: 0 12px;
+}
+.scale-hint:empty {
+  background: none;
 }
 
 .banner {
@@ -1170,7 +1178,7 @@ kbd {
     width: max(170px, calc(var(--u) * 46));
   }
   .mag-panel {
-    top: calc(var(--u) * 30);
+    top: calc(var(--u) * 36);
     min-width: 0;
     max-width: 70%;
   }

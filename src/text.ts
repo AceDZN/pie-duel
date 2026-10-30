@@ -5,7 +5,7 @@ export const ltr = (s: string | number) => `<bdi dir="ltr">${s}</bdi>`;
 export const fr = (n: number, d: number) => ltr(`${n}/${d}`);
 
 export const CARD_INFO: Record<CardId, { name: string; icon: string; desc: string; c1: string; c2: string }> = {
-  peek: { name: 'הצצה', icon: '👀', desc: 'רואים מה הפגז הבא (רק את).', c1: '#7a3cd6', c2: '#36146e' },
+  peek: { name: 'הצצה', icon: '👀', desc: 'רואים מה הפגז הבא — רק אתם.', c1: '#7a3cd6', c2: '#36146e' },
   eject: { name: 'פליטה', icon: '🌀', desc: 'הפגז הבא עף החוצה ונחשף לכולם. התור נשאר שלך.', c1: '#e8a628', c2: '#8a4a08' },
   double: { name: 'כפולה', icon: '✌️', desc: 'שני פגזים ביריב בבת אחת. מספיקה עוגה אחת כדי לפגוע.', c1: '#2d6fd8', c2: '#0f2a66' },
   spinner: { name: 'סביבון', icon: '🎡', desc: 'מכאן והלאה: גלגל עם החזרה באותו סיכוי.', c1: '#d83d8a', c2: '#5e0b38' },

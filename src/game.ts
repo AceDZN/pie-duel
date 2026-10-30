@@ -350,6 +350,7 @@ export class Game {
     const target = e.target as Seat;
     const yours = e.shooter === 'you';
     $('thought').classList.add('hidden');
+    $('toast').classList.add('hidden');
     // aim: the cannon swivels toward the target; when it's aimed at you, the camera stares down the bell
     st.frame(target === 'you' ? 'you' : 'lean', 500);
     await st.aim(target, 600);
@@ -951,7 +952,7 @@ export class Game {
       tok.style.left = `${(this.callValue.n / this.callValue.d) * 100}%`;
       $('token-frac').textContent = `${this.callValue.n}/${this.callValue.d}`;
     } else tok.classList.add('hidden');
-    hint.innerHTML = active ? (this.callValue ? 'האסימון במקום. ניחוש מדויק = ' + ltr('+2') + ' ז׳יטונים' : 'רוצים לנחש? הניחו את האסימון על סולם ההסתברות (לא חובה)') : '';
+    hint.innerHTML = active ? (this.callValue ? 'האסימון במקום. ניחוש מדויק = ' + ltr('+2') + ' ז׳יטונים' : 'רוצים לנחש? הניחו את האסימון על סולם ההסתברות. לא חובה.') : '';
   }
 
   private clearCall() {
