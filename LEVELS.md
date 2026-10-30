@@ -228,7 +228,7 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 
 ### 17. מבחן הגמר: האלוף — Transfer
 - **Goal:** ביג מו משחק לפי ההסתברות ומציץ כשהוא לא בטוח. בלי רמזים.
-- **Setup:** 7 v 7, **no meter**, rooftop stage, transfer, call-it, 5 chips, hand: Double + Flavor; shop: flavor, peek, eject, double, spinner, magnifier; Big Mo has 2 peeks. Seed 1717. Loads: **3/5** (Double 9/10), **spinner ¼ × 3**, **8 shells chocolate 3+1 / vanilla 1+3** (Flavor card: 3/4 vs 1/4), spinner ¾ × 3, 2/6, 4/6.
+- **Setup:** 7 v 7, **no meter**, rooftop stage, transfer, call-it, 5 chips, hand: Double + Flavor; shop: flavor, peek, eject, double, spinner, magnifier; Big Mo has 2 peeks and 1 Double (he fires it when P(at least one pie in two) beats his best single shot). Seed 1717. Loads: **3/5** (Double 9/10), **spinner ¼ × 3**, **8 shells chocolate 3+1 / vanilla 1+3** (Flavor card: 3/4 vs 1/4), spinner ¾ × 3, 2/6, 4/6.
 - **Change:** the draft (5 v 5, 3/5 then a 5-spin wheel) ended before the flavor magazine in 100 % of matches; shorter spinner rounds and 7 v 7 now reach it in 100 %.
 - **MC:** odds w57 p94/100; alwaysRival w10 p10; alwaysSelf w13 p13; random p15. Reach 100/100/100. (With the Double scoring fix: odds p100/100.)
 
