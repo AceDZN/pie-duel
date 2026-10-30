@@ -19,7 +19,7 @@ export type StageLook = 'booth' | 'dim' | 'rooftop';
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 const TABLE_Y = 0.78;
 const CAM_HOME = V(0.05, 1.3, 1.95);
-const LOOK_HOME = V(0.14, 1.12, -0.9);
+const LOOK_HOME = V(0.2, 1.12, -0.9);
 
 // ---------------------------------------------------------------- rivals
 
@@ -598,7 +598,7 @@ export class Stage {
 
   private buildCannon() {
     const c = this.cannon;
-    c.position.set(-0.32, TABLE_Y, 0.05);
+    c.position.set(-0.48, TABLE_Y, 0.08);
     this.scene.add(c);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.06, 32), new THREE.MeshStandardMaterial({ color: 0x3a2a24, metalness: 0.6, roughness: 0.4 }));
     base.position.y = 0.03;
@@ -692,21 +692,21 @@ export class Stage {
   private buildWheels() {
     // spinner wheels stand on the table, right of the cannon; shown only for spinner/coin rounds
     this.scene.add(this.wheelGroup);
-    this.wheelGroup.position.set(0.2, TABLE_Y, 0.34);
-    this.wheelGroup.rotation.y = -0.12;
+    this.wheelGroup.position.set(1.15, 0, -1.25);
+    this.wheelGroup.rotation.y = -0.32;
     for (let i = 0; i < 2; i++) {
-      const w = new THREE.Mesh(new THREE.CircleGeometry(0.135, 48), new THREE.MeshStandardMaterial({ map: wheelFace(1, 4), roughness: 0.5 }));
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.026, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.8 }));
-      stand.position.y = 0.05;
+      const w = new THREE.Mesh(new THREE.CircleGeometry(0.27, 48), new THREE.MeshStandardMaterial({ map: wheelFace(1, 4), roughness: 0.5 }));
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.05, 1.1, 10), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.8 }));
+      stand.position.y = 0.55;
       const holder = new THREE.Group();
       holder.add(stand);
-      w.position.y = 0.22;
+      w.position.y = 1.38;
       holder.add(w);
       const pointer = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 3), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-      pointer.position.set(0, 0.385, 0.01);
+      pointer.position.set(0, 1.71, 0.01);
       pointer.rotation.z = Math.PI;
       holder.add(pointer);
-      holder.position.x = i * 0.32;
+      holder.position.x = i * 0.62;
       shadowsOn(holder);
       this.wheelGroup.add(holder);
       this.wheels.push(w);
@@ -735,7 +735,7 @@ export class Stage {
     pole.position.y = 0.5;
     d.add(body, head, target, pole);
     shadowsOn(d);
-    d.position.set(1.25, 0, -1.75);
+    d.position.set(-1.05, 0, -0.95);
     d.visible = false;
     this.scene.add(d);
   }
@@ -824,11 +824,11 @@ export class Stage {
     for (const r of this.rivals.values()) this.scene.remove(r.root);
     this.rivals.clear();
     const gltf = this.models[rivalModel as ModelName] ?? this.models['rival-bubu'];
-    const tall = ({ 'rival-mo': 1.72, 'rival-twin': 1.35, 'rival-rina': 1.45, 'rival-robo': 1.55 } as Record<string, number>)[rivalModel] ?? 1.6;
+    const tall = ({ 'rival-mo': 1.72, 'rival-twin': 1.45, 'rival-rina': 1.62, 'rival-robo': 1.62 } as Record<string, number>)[rivalModel] ?? 1.62;
     const tint = !this.models[rivalModel as ModelName] && rivalModel !== 'rival-bubu' ? fallbackTint(rivalModel) : null;
     if (seats === 1) {
       const r = new Rival(gltf, tint, tall, rivalModel === 'rival-mo');
-      r.root.position.set(0.5, 0.18, rivalModel === 'rival-mo' ? -1.25 : -1.0);
+      r.root.position.set(0.6, 0.18, rivalModel === 'rival-mo' ? -1.25 : -1.0);
       r.root.rotation.y = -0.12;
       this.scene.add(r.root);
       this.rivals.set('r1', r);
@@ -944,7 +944,7 @@ export class Stage {
       (this.wheels[1].material as THREE.MeshStandardMaterial).map = face(b, 'B');
       (this.wheels[1].material as THREE.MeshStandardMaterial).needsUpdate = true;
     }
-    this.wheelGroup.position.x = mode === 'coin' ? 0.06 : 0.22;
+    this.wheelGroup.position.x = mode === 'coin' ? 0.95 : 1.18;
     this.dummy.visible = mode === 'mystery';
   }
 
@@ -1171,7 +1171,7 @@ export class Stage {
     const r = this.rivals.get(seat);
     if (!r) return 0;
     const d = r.play(a);
-    if (a !== 'idle' && a !== 'defeat' && a !== 'cheer') this.tweens.wait(Math.max(800, d * 1000 * 0.8)).then(() => r.play('idle', 0.4));
+    if (a !== 'idle' && a !== 'defeat' && a !== 'cheer') this.tweens.wait(Math.min(1800, Math.max(800, d * 1000 * 0.8))).then(() => r.play('idle', 0.45));
     return d;
   }
 
@@ -1348,9 +1348,9 @@ export class Stage {
       lampBulb.position.set(0, 2.36, -0.35);
       const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.8, 6), new THREE.MeshBasicMaterial({ color: 0x111111 }));
       cord.position.set(0, 2.98, -0.35);
-      const lamp = new THREE.SpotLight(0xfff0c8, 18, 4, 0.75, 0.5, 1.2);
+      const lamp = new THREE.SpotLight(0xfff0c8, 7, 4, 0.6, 0.6, 1.2);
       lamp.position.set(0, 2.3, -0.35);
-      lamp.target.position.set(0, TABLE_Y, -0.2);
+      lamp.target.position.set(0.35, TABLE_Y, -0.3);
       g.add(shade, lampBulb, cord, lamp, lamp.target);
       const cone = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.6, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.03, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
       cone.position.set(0, 1.55, -0.3);

@@ -212,6 +212,9 @@ export class Game {
     $('shop').classList.add('hidden');
     $('hud').classList.remove('hidden');
     $('explain').classList.add('hidden');
+    $('toast').classList.add('hidden');
+    $('coach').classList.add('hidden');
+    $('banner').classList.add('hidden');
     $('cream-overlay').className = '';
     const byRival: Record<string, 1 | 2 | 3 | 4 | 5> = { 'rival-bubu': 1, 'rival-rina': 2, 'rival-twin': 3, 'rival-robo': 4, 'rival-mo': 5 };
     const themeN = this.level.id >= 100 ? byRival[this.level.rival.model] ?? 2 : this.level.booth;
@@ -609,10 +612,17 @@ export class Game {
     let icon = '🥧';
     let caption = 'הסתברות לעוגה';
     let body = '';
+    const estimate = this.duel?.load.type === 'mystery';
     if (e.key === 'selfOnPies') {
-      body = `${why}. ${p.n === p.d ? 'זה ודאי' : 'זה יותר מחצי'} — עדיף היה לזרוק על היריב.`;
+      body = estimate
+        ? `${why}. לפי מה שראיתם עוגה סבירה יותר — עדיף היה לזרוק על היריב.`
+        : p.n === p.d
+          ? `${why} — עדיף היה לזרוק על היריב.`
+          : `${why}. זה יותר מחצי — עדיף היה לזרוק על היריב.`;
     } else if (e.key === 'rivalOnDuds') {
-      body = `${why}. הסתברות לריק = ${ltr(`1 − ${str(p)} = ${str(q)}`)} (המאורע המשלים) — ${q.n === q.d ? 'ודאי' : 'יותר מחצי'}. עדיף היה לכוון לעצמכם ולקבל בונוס אומץ.`;
+      body = estimate
+        ? `${why}. לפי מה שראיתם ריק סביר יותר — עדיף היה לכוון לעצמכם.`
+        : `${why}. הסתברות לריק = ${ltr(`1 − ${str(p)} = ${str(q)}`)} (המאורע המשלים) — ${q.n === q.d ? 'ודאי' : 'יותר מחצי'}. עדיף היה לכוון לעצמכם ולקבל בונוס אומץ.`;
       big = ltr(str(q));
       icon = '🎉';
       caption = 'הסתברות לריק';
@@ -676,8 +686,8 @@ export class Game {
 
   private async showBet(e: Extract<DuelEvent, { t: 'bet' }>) {
     const st = this.stage;
-    const L = this.duel!.load;
-    const pie = L.type === 'bet' ? L.pie : frac(1, 2);
+    const lastDec = this.duel!.decisions[this.duel!.decisions.length - 1];
+    const pie = lastDec?.kind === 'bet' ? lastDec.p : frac(1, 2);
     this.toast(`ההימור שלך: ${BET_NAME[e.event]}`);
     for (const s of e.spins) {
       this.sfx.spin(1300);
@@ -690,11 +700,13 @@ export class Game {
     await st.tweens.wait(900);
     $('banner').classList.add('hidden');
     const dec = this.duel?.decisions[this.duel.decisions.length - 1];
-    if (dec && dec.kind === 'bet' && L.type === 'bet' && !dec.correct) {
-      const pp = str(L.pie);
-      const qq = str(complement(L.pie));
+    if (dec && dec.kind === 'bet' && !dec.correct) {
+      // the engine has already moved to the next load: work from the recorded decision
+      const pp = str(dec.p);
+      const qq = str(complement(dec.p));
+      const options = Object.keys(dec.values) as BetEvent[];
       const form: Record<BetEvent, string> = { twoPies: `${pp}·${pp}`, noPie: `${qq}·${qq}`, exactlyOne: `${pp}·${qq} + ${qq}·${pp}`, atLeastOne: `1 − ${qq}·${qq}`, pieThenDud: `${pp}·${qq}` };
-      const lines = L.options.map((o) => `<li>${BET_NAME[o]}: ${ltr(`${form[o]} = ${str(dec.values[o]!)}`)}</li>`).join('');
+      const lines = options.map((o) => `<li>${BET_NAME[o]}: ${ltr(`${form[o]} = ${str(dec.values[o]!)}`)}</li>`).join('');
       await this.card(`<div class="row"><span class="big">🌳</span></div><p>בדיאגרמת העץ כופלים לאורך הענף:</p><ul style="text-align:start">${lines}</ul><p>${BET_NAME[dec.best[0] as BetEvent]} סביר יותר.</p>`);
     }
   }
