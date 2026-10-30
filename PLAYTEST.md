@@ -35,11 +35,11 @@ Full report: `docs/PLAYTEST_RAW.md`, screenshots in `docs/captures/playtest/`. N
 | — | L7: firing at ½ while holding Eject scored wrong with no explanation | **Fixed:** a note says Eject would have given information first. |
 | — | Rival bubbles worked as a delayed meter on transfer levels | **Fixed** (see 1). |
 | — | Meter showed the old value during shots | **Fixed:** hidden while it isn't your move. |
-| — | Phone width on Twins levels: action row overflow, hp pies spilling, overlaps | **Fixed** in the portrait container query (re-captured at 390 × 844 for L1; Twins at phone width not re-captured). |
+| — | Phone width on Twins levels: action row overflow, hp pies spilling, overlaps | **Fixed** in the portrait container query; re-checked at 390 × 844 on L11 (`docs/captures/12-mobile-twins-390.jpg`): action row inside the screen, hp pies inside their card. The toast still slightly overlaps the magazine title there. |
 | — | Hebrew agreement and counts ("התאומים העז", "נשארו 1 יריות", "0 עוגות מתוך 0") | **Fixed** with count/gender helpers. |
 | — | Pacing: 10–21 s between decisions | **Improved:** shorter waits, slow motion only for your own pie on a rival, and a ×2 speed toggle (F). Not re-measured by the playtester. |
 
-After the fixes: 66 unit tests pass; the headless UI run passes 15/17 first plays for the odds autoplayer (L6 and L8 were lost on luck without cards; L8 passed on the rematch), and **always-rival and always-self fail all 17 first plays through the real buttons**.
+After the fixes: 66 unit tests pass; the headless UI run passes 15/17 first plays for the odds autoplayer (it doesn't use info cards; L6 and L8 were lost on luck) and **both L6 and L8 pass on the rematch through the real buttons**; **always-rival and always-self fail all 17 first plays**.
 
 ## Known limits
 

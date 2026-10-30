@@ -12,9 +12,11 @@
 - Headless smoke run (`tests/smoke.mjs`) plays all 17 levels through the HUD buttons with the solver's moves: all complete, no console errors. Captures (`tests/capture.mjs`) at mockup size → `docs/captures/`; comparison in `docs/VISUAL_REVIEW.md`.
 - Measured: 120 fps in headed Chrome at 1280×720 (DPR 1, Apple M2 Max). JS bundle 789 kB (208 kB gzip); models 7 GLBs ≈ 11 MB total.
 
+- Independent playtest (separate agent, ~110 matches): 1 blocker (mystery wheel leaked through Robo's bubble) and several bypasses / fairness gaps found; all fixed and re-verified (details in `PLAYTEST.md`). Odds reading now needs 4 informative calls, both questions answered; near-constant strategies added to the Monte Carlo tests; replays are fresh shuffles; call-it pays only without the meter; ×2 speed toggle; Big Mo plays a Double card.
+- 66 tests pass. Headless UI: constant strategies fail all 17 first plays; odds autoplay passes 15/17 first plays and the other two on the rematch.
+
 ## Open
 
 - Publish to GitHub (blocked, see above). Vercel deploy not done (not requested).
 - Big Mo model and a face rig (needs Tripo credits beyond the agreed budget).
-- Independent playtest findings → `PLAYTEST.md`.
 - Human playtest with students: fun and learning can't be measured by automation.
