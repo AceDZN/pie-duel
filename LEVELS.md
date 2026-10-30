@@ -45,39 +45,45 @@ unpassed attempts carry into the rematch (last 16). Stars: 3 = odds read at ≥ 
    +1 to −4/5. The scoring only rewards Eject at ½ (where it also helps at the match level, since ½ needs an even
    count); off ½ it is neither rewarded nor punished.
 
-## Monte Carlo table (`npx tsx scripts/mc.ts 400`, 400 seeds, 30 Oct 2026)
+## Monte Carlo table (`npm run mc`, 400 seeds per cell, 31 Oct 2026, after the playtest fixes)
 
 `w` = win %, `p` = pass % in one attempt / within two attempts (the rematch carries the first attempt's decisions),
-`a` = solver accuracy. `gambler` = odds play, but after two equal spinner results it acts as if the other result is
-"due" (on magazines it is the odds player without cards).
+`a` = solver accuracy. Strategies: `odds` reads the odds (and uses cards when they help); `alwaysRival`, `alwaysSelf`,
+`random`; the near-constant ones the independent playtester found — `rivalUnlessNoPies` (always at the rival unless no
+pie is left), `selfUnlessAllPies` (always at yourself unless only pies are left), `alternate`; and `gambler` (odds play,
+but after two equal spinner results it acts as if the other result is "due").
 
 ```
-lvl odds                  alwaysRival           alwaysSelf            random                gambler
-1   w78 p100/100 a100     w45 p45/66 a66        w0 p0/0 a39           w31 p37/49 a53        w78 p100/100 a100
-2   w100 p100/100 a100    w0 p0/0 a50           w0 p0/0 a50           w13 p21/28 a47        w100 p100/100 a100
-3   w69 p96/100 a100      w42 p42/63 a42        w0 p0/0 a73           w30 p44/62 a62        w69 p96/100 a100
-4   w56 p97/100 a100      w28 p28/50 a56        w14 p14/25 a65        w33 p40/59 a65        w56 p97/100 a100
-5   w52 p95/100 a100      w5 p5/11 a52          w7 p7/14 a76          w11 p22/34 a66        w52 p95/100 a100
-6   w70 p100/100 a100     w2 p2/5 a97           w0 p0/0 a60           w7 p11/21 a78         w6 p17/26 a100
-7   w75 p92/100 a100      w26 p26/42 a8         w17 p17/38 a9         w28 p28/45 a10        w42 p42/65 a19
-8   w62 p100/100 a100     w10 p10/21 a79        w0 p0/0 a36           w9 p24/36 a63         w45 p81/96 a100
-9   w55 p100/100 a100     w7 p7/14 a54          w5 p5/11 a51          w13 p21/30 a53        w55 p100/100 a100
-10  w83 p91/99 a100       w7 p7/11 a7           w20 p20/35 a42        w14 p14/27 a25        w52 p52/74 a56
-11  w60 p98/100 a100      w16 p16/31 a49        w16 p16/27 a50        w16 p28/42 a52        w60 p98/100 a100
-12  w45 p100/100 a100     w14 p14/31 a65        w22 p22/38 a56        w19 p28/45 a59        w34 p89/97 a90
-13  w81 p94/100 a100      w13 p13/26 a8         w6 p6/12 a11          w16 p16/28 a12        w38 p38/64 a26
-14  w53 p100/100 a100     w14 p14/27 a42        w27 p27/45 a58        w20 p29/42 a48        w35 p63/76 a76
-15  w61 p96/100 a100      w17 p17/32 a45        w8 p8/16 a50          w16 p18/33 a49        w25 p25/46 a69
-16  w65 p100/100 a100     w9 p9/17 a47          w22 p22/39 a52        w19 p27/42 a49        w19 p37/54 a63
-17  w57 p94/100 a100      w10 p10/16 a9         w13 p13/27 a43        w15 p15/28 a26        w34 p34/59 a44
+lvl odds                  alwaysRival           alwaysSelf            random                rivalUnlessNoPies     selfUnlessAllPies     alternate             gambler               
+1   w54 p78/100 a100      w16 p16/32 a39        w0 p0/0 a67           w13 p14/34 a48        w40 p40/62 a49        w18 p18/22 a55        w19 p19/32 a41        w54 p78/100 a100      
+2   w54 p78/100 a100      w16 p16/32 a39        w0 p0/0 a67           w13 p14/34 a48        w40 p40/62 a49        w18 p18/22 a55        w19 p19/32 a41        w54 p78/100 a100      
+3   w44 p87/100 a100      w26 p26/47 a39        w0 p0/0 a69           w13 p19/38 a54        w35 p35/60 a43        w3 p3/7 a70           w10 p10/23 a50        w44 p87/100 a100      
+4   w50 p83/100 a100      w23 p23/44 a45        w0 p0/0 a46           w25 p28/48 a51        w40 p40/69 a52        w26 p26/34 a46        w21 p22/42 a49        w50 p83/100 a100      
+5   w52 p77/100 a100      w5 p5/5 a44           w7 p7/16 a66          w11 p14/25 a58        w32 p32/43 a54        w30 p30/54 a68        w17 p22/48 a68        w52 p77/100 a100      
+6   w71 p84/100 a100      w2 p2/2 a42           w19 p19/24 a81        w13 p13/26 a65        w31 p31/38 a60        w29 p29/48 a85        w7 p7/18 a57          w50 p59/93 a100       
+7   w75 p90/100 a100      w26 p26/26 a5         w17 p17/33 a5         w28 p28/38 a6         w38 p38/48 a6         w31 p31/48 a6         w30 p30/41 a6         w42 p42/58 a11        
+8   w62 p100/100 a100     w10 p10/24 a74        w0 p0/0 a36           w9 p11/22 a61         w25 p25/49 a77        w26 p26/41 a60        w13 p21/37 a68        w45 p59/98 a100       
+9   w55 p80/100 a100      w7 p7/7 a51           w5 p5/5 a48           w13 p17/26 a50        w33 p33/47 a56        w37 p37/53 a54        w18 p18/44 a61        w55 p80/100 a100      
+10  w82 p93/100 a100      w7 p7/13 a54          w12 p12/12 a59        w13 p14/40 a56        w23 p23/40 a67        w27 p27/51 a66        w11 p11/24 a58        w47 p64/100 a100      
+11  w60 p79/100 a100      w17 p17/22 a48        w15 p15/17 a48        w15 p18/32 a49        w37 p37/59 a55        w36 p36/58 a55        w14 p17/31 a47        w60 p79/100 a100      
+12  w43 p79/100 a100      w13 p13/27 a56        w20 p20/28 a43        w17 p22/44 a49        w13 p13/27 a56        w20 p20/28 a43        w9 p9/26 a7           w30 p67/90 a87        
+13  w78 p90/100 a100      w10 p10/23 a71        w5 p5/12 a57          w14 p22/38 a66        w20 p20/41 a74        w25 p25/42 a58        w15 p36/53 a75        w38 p67/100 a100      
+14  w53 p93/100 a100      w14 p14/21 a42        w27 p27/33 a58        w20 p28/41 a48        w14 p14/21 a42        w27 p27/33 a58        w13 p13/27 a47        w35 p60/75 a76        
+15  w61 p96/100 a100      w17 p17/25 a45        w8 p8/15 a50          w16 p18/28 a49        w17 p17/25 a45        w16 p16/30 a64        w15 p15/30 a53        w25 p25/44 a69        
+16  w59 p95/100 a100      w7 p7/14 a54          w27 p27/36 a61        w18 p19/35 a56        w19 p19/32 a70        w40 p40/56 a78        w14 p14/27 a50        w16 p19/52 a78        
+17  w47 p91/100 a100      w8 p8/8 a37           w5 p5/5 a60           w9 p13/23 a50         w12 p12/17 a38        w11 p11/17 a60        w9 p16/26 a64         w25 p56/87 a86
 ```
 
-Targets met: the odds player passes within two attempts on ≥ 99 % everywhere (tests require ≥ 95 % on 300 seeds);
-every constant or random strategy passes ≤ 45 % in one attempt in booth 1 and ≤ 29 % from booth 2 on (tests: ≤ 50 % / ≤ 35 %);
-the gambler passes 63 / 25 / 37 % in booth 4 against 100 / 96 / 100 % for the odds. Against Grandma Rina and Big Mo the
-odds player wins 52 / 62 / 57 % vs 5 / 10 / 10 % (always at the rival) and 7 / 0 / 13 % (always at yourself).
-The same odds player wins 53 % against Robo-Clown in level 14 but only 38 % against an odds-playing Robo (65 % vs 35 % in
-level 16): the gambler's fallacy is what you exploit.
+How passing works now (see `src/core/duel.ts` `evaluate`): win, **or** read the odds — at least 4 informative calls
+(certain, impossible and exact-½ shots don't count), ≥ 80 % of them solver-correct, and both questions asked and
+answered right (a pie-likely and a dud-likely moment). Earlier unpassed attempts count, and a rematch whose history
+never asked one of the questions opens with a load that asks it.
+
+Targets met: odds play passes every level within two attempts (100 %, tests require ≥ 95 % on 300 seeds); in one
+attempt every constant, near-constant or random strategy passes ≤ 40 % (tests: ≤ 40 % for pure constants, ≤ 45 % for
+the others) — what's left is luck-wins; through the real UI (`npm run smoke`) always-rival and always-self fail all 17
+first plays. Against Grandma Rina and Big Mo the odds player wins clearly more (L5 52 % vs 5 / 7 %, L8 62 % vs 10 / 0 %,
+L17 47 % vs 8 / 5 %). In booth 4 the gambler passes 60 / 25 / 19 % in one attempt against 93 / 96 / 95 % for the odds.
 
 "Reach" below = share of odds matches (400 seeds) that get to each load, in order.
 Every first-play seed (`seed`) is one the odds player wins and both constant strategies lose (tested).
@@ -232,12 +238,10 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 - **Change:** the draft (5 v 5, 3/5 then a 5-spin wheel) ended before the flavor magazine in 100 % of matches; shorter spinner rounds and 7 v 7 now reach it in 100 %.
 - **MC:** odds w57 p94/100; alwaysRival w10 p10; alwaysSelf w13 p13; random p15. Reach 100/100/100. (With the Double scoring fix: odds p100/100.)
 
-## Open issues for the core (reported to the lead; tests marked `todo`)
+## Core issues found in review — all fixed
 
-1. `evaluate()` groups Double with the dud side and requires a strictly-best "rival" decision, so a player who uses
-   Double at every pie-likely moment can't pass by odds. Measured on the draft level 13: ~70 of 400 odds matches failed for that reason alone.
-2. `Duel.options()` ranks Double above "rival" whenever it's held, so firing at the rival on 3/5 while saving Double
-   is scored wrong.
-3. `Duel.nextSeat()` gives the turn to you, not the other twin, when a twin creams itself out on its own turn.
-4. On the mystery wheel, `Decision.p` and the `explain` event carry the *true* wheel probability when you took fewer
-   than 20 tests, which leaks the hidden mix if the HUD prints it.
+1. Double players couldn't pass by odds (Double was grouped with the dud side) — fixed in `evaluate`.
+2. Holding Double made the ½-rule shot "wrong" — Double is now optional in scoring.
+3. A twin creaming itself out handed the turn to you instead of the other twin — `nextSeat` walks the seats.
+4. The mystery wheel leaked its true mix (decision text and Robo's bubble) — both sides now reason from the public test
+   shots, decisions are scored against the estimate you saw, and bubbles never print fractions on no-meter levels.
