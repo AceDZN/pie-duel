@@ -1,0 +1,62 @@
+{
+  "_notes": "Native GLB heights are Tripo-normalized (~1 unit); scale with fitHeight to suggestedHeightMeters. Forward axis verified from bind-pose toe joints (rivals) and mesh shape (props). Rival skeletons are Mixamo (mixamorig:*, 65 joints). Clips were exported 'in place'. Only extension used: EXT_texture_webp (+KHR_materials_volume on pie-o-matic and cream-pie). No meshopt/draco needed.",
+  "rival-bubu.glb": {
+    "clips": { "idle": "idle", "taunt": "laugh_01", "hit": "hit_to_head", "celebrate": "cheer", "defeat": "defeat_02" },
+    "heightMeters": 1.0,
+    "suggestedHeightMeters": 1.55,
+    "forward": "+z"
+  },
+  "rival-rina.glb": {
+    "clips": { "idle": "idle", "taunt": "laugh_02", "hit": "hit_to_head", "celebrate": "cheer", "defeat": "defeat_02" },
+    "heightMeters": 1.0,
+    "suggestedHeightMeters": 1.4,
+    "forward": "+z"
+  },
+  "rival-robo.glb": {
+    "clips": { "idle": "idle", "taunt": "laugh_01", "hit": "hit_to_head", "celebrate": "cheer", "defeat": "defeat_02" },
+    "heightMeters": 0.95,
+    "suggestedHeightMeters": 1.5,
+    "forward": "+z"
+  },
+  "rival-twin.glb": {
+    "clips": { "idle": "idle", "taunt": "laugh_01", "hit": "hit_to_head", "celebrate": "cheer" },
+    "heightMeters": 1.0,
+    "suggestedHeightMeters": 1.35,
+    "forward": "+z",
+    "note": "Reused from the user's Tripo assets (not generated for Pie Duel). Load twice for the Twins; tint the T-shirt material per seat or add a procedural vest. No defeat clip: use hit_to_head + hold, or idle."
+  },
+  "pie-o-matic.glb": {
+    "clips": {},
+    "heightMeters": 0.87,
+    "suggestedHeightMeters": 0.55,
+    "forward": "-x",
+    "note": "forward = direction the brass horn points (horn at -x, red lever at +x). Rotate so the horn faces the current target. Single fused mesh: the hopper dome has ~10 pies baked in, so cover/frost it or overlay a procedural hopper; the shell counter must stay procedural."
+  },
+  "cream-pie.glb": {
+    "clips": {},
+    "heightMeters": 1.0,
+    "suggestedHeightMeters": 0.18,
+    "forward": "+y",
+    "note": "Tall whipped-cream swirl with a cherry (reads more sundae than flat pie). Flatten it with scale.y ~0.6 for the projectile."
+  },
+  "prize-shelf.glb": {
+    "clips": {},
+    "heightMeters": 0.89,
+    "suggestedHeightMeters": 2.0,
+    "forward": "+z"
+  },
+  "spinner-wheel.glb": {
+    "clips": {},
+    "heightMeters": 1.0,
+    "suggestedHeightMeters": 2.0,
+    "forward": "+z",
+    "note": "Decorative only: wheel and stand are one fused mesh with 10 uneven wedges. The probability spinner must be procedural."
+  },
+  "booth-stall.glb": {
+    "clips": {},
+    "heightMeters": 0.94,
+    "suggestedHeightMeters": 3.2,
+    "forward": "+z",
+    "note": "Striped canopy stall with a blank arched sign board; good for the booth set and the level-select midway. Not yet listed in src/models.ts MODEL_FILES."
+  }
+}

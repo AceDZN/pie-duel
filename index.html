@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#1c1033" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%231c1033%22/%3E%3Cpath d=%22M12 34h40l-5 12H17z%22 fill=%22%23c8913a%22/%3E%3Cpath d=%22M14 34c2-12 34-12 36 0z%22 fill=%22%23fff3d6%22/%3E%3Ccircle cx=%2232%22 cy=%2221%22 r=%225%22 fill=%22%23ff4fa3%22/%3E%3C/svg%3E" />
+    <title>דו־קרב העוגות</title>
+    <meta name="description" content="דו־קרב תלת־ממדי בדוכן קרנבל: תותח עוגות טעון בעוגות קצפת ובפגזי קונפטי בסדר נסתר. מחשבים את ההסתברות ומחליטים במי לירות." />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" aria-label="דו־קרב העוגות — שולחן הדוכן"></canvas>
+      <div id="cream-overlay" aria-hidden="true"></div>
+      <div id="flash" aria-hidden="true"></div>
+
+      <div id="hud" class="hidden">
+        <!-- top-left (visual left in RTL): pause, sound, chips -->
+        <div class="hud-tl">
+          <button class="round" id="btn-pause" aria-label="השהיה"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.4"/><rect x="14" y="5" width="4" height="14" rx="1.4"/></svg></button>
+          <button class="round" id="btn-sound" aria-label="צלילים" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke-width="2" stroke-linecap="round"/></svg></button>
+          <div class="chips-pill" aria-label="ז׳יטונים"><span class="chip-ico"></span><bdi dir="ltr" id="chips">0</bdi></div>
+        </div>
+
+        <!-- top-center: the current magazine -->
+        <div class="mag-panel" id="mag-panel">
+          <div class="mag-title" id="mag-title">המחסנית הנוכחית</div>
+          <div class="mag-slots" id="mag-slots" dir="ltr"></div>
+          <div class="mag-sub" id="mag-sub"></div>
+        </div>
+
+        <!-- top-right: booth plaque + cream points -->
+        <div class="hud-tr">
+          <div class="plaque"><span class="tent"></span><div><div class="booth-name" id="booth-name"></div><div class="level-name" id="level-name"></div></div></div>
+          <div class="hp-card" id="hp-card"></div>
+        </div>
+
+        <!-- right: odds meter -->
+        <div class="meter" id="meter">
+          <div class="meter-cap">סיכוי<br />לעוגה</div>
+          <div class="meter-tube"><div class="meter-fill" id="meter-fill"></div></div>
+          <bdi dir="ltr" class="meter-frac" id="meter-frac">?</bdi>
+          <button class="meter-btn hidden" id="btn-meter">הצגת סיכוי <bdi dir="ltr" id="meter-uses"></bdi></button>
+        </div>
+
+        <!-- left side panels: tree / table / area model / tests -->
+        <div class="side-panel hidden" id="side-panel"></div>
+
+        <!-- rival thought bubble -->
+        <div class="thought hidden" id="thought"></div>
+
+        <!-- hand of trick cards -->
+        <div class="hand" id="hand"></div>
+
+        <!-- bottom: actions + probability scale -->
+        <div class="bottom">
+          <div class="actions" id="actions"></div>
+          <div class="scale" id="scale">
+            <div class="scale-end" dir="rtl"><b>0</b><small>בלתי אפשרי</small></div>
+            <div class="scale-track" id="scale-track" dir="ltr">
+              <div class="scale-bar"></div>
+              <div class="scale-ticks" id="scale-ticks"></div>
+              <div class="scale-token hidden" id="scale-token"><span></span><bdi dir="ltr" id="token-frac"></bdi></div>
+            </div>
+            <div class="scale-end" dir="rtl"><b>1</b><small>ודאי</small></div>
+          </div>
+          <div class="scale-hint" id="scale-hint"></div>
+        </div>
+
+        <div class="banner hidden" id="banner"></div>
+        <div class="comic hidden" id="comic"></div>
+        <div class="toast hidden" id="toast" role="status"></div>
+        <div class="explain hidden" id="explain" role="dialog" aria-live="polite"></div>
+        <div class="goal-card hidden" id="goal-card" role="dialog"></div>
+      </div>
+
+      <div id="shop" class="screen shop hidden" role="dialog" aria-label="חנות הקלפים"></div>
+      <div id="title" class="screen title-screen"></div>
+      <div id="select" class="screen select-screen hidden"></div>
+      <div id="overlay" class="screen panel-screen hidden"><div class="panel-box" id="panel-box"></div></div>
+      <div id="glerror" class="screen hidden"><div class="panel-box"><h2>הגרפיקה נעצרה</h2><p>הדפדפן איבד את הקשר ל־WebGL. רעננו את העמוד כדי להמשיך.</p><button class="btn gold" onclick="location.reload()">רענון</button></div></div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
