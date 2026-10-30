@@ -20,6 +20,9 @@ npm run dev      # http://localhost:5216
 npm test         # unit tests, solver checks, Monte Carlo strategy comparisons
 npm run build    # static build in dist/ (relative base, works offline)
 npm run preview  # http://localhost:4216
+npm run mc       # Monte Carlo strategy table for all levels
+npm run smoke    # headless Chrome plays all 17 levels through the HUD (needs a server; BASE=http://localhost:4216/ for the preview)
+npm run capture  # gameplay screenshots at mockup size into docs/captures/
 ```
 
 ## Controls

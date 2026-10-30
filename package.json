@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4216 --strictPort",
     "test": "tsx --test tests/*.test.ts",
-    "capture": "node tests/browser-capture.mjs"
+    "capture": "node tests/capture.mjs docs/captures",
+    "smoke": "node tests/smoke.mjs odds 1-17",
+    "mc": "tsx scripts/mc.ts 400"
   },
   "dependencies": {
     "@fontsource/rubik": "5.2.8",
