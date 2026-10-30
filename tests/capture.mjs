@@ -24,6 +24,7 @@ const state = (p) => p.evaluate(() => JSON.parse(window.render_game_to_text()));
 const adv = (p, ms) => p.evaluate((m) => window.advanceTime(m), ms);
 const shot = async (p, name) => {
   await adv(p, 34); // let the compositor catch the last frame
+  await p.waitForTimeout(500); // CSS entrance animations run in real time
   await p.screenshot({ path: `${out}/${name}.jpg`, type: 'jpeg', quality: 86 });
   console.log('captured', name);
 };

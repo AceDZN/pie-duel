@@ -18,9 +18,28 @@ Automation can't tell us whether 13-year-olds find this fun or learn from it. Ev
 
 **Measured:** 120 fps in headed Chrome at 1280 × 720 (DPR 1, Apple M2 Max); JS 789 kB (208 kB gzip); 7 GLBs ≈ 11 MB.
 
-## Independent playtest
+## Independent playtest (separate agent, ~110 matches through real inputs) and what we did
 
-See `docs/PLAYTEST_RAW.md` (written by a separate playtester agent that didn't build the game) and the fixes that followed, below.
+Full report: `docs/PLAYTEST_RAW.md`, screenshots in `docs/captures/playtest/`. No console errors in any of its runs. Its findings, ranked, and the response:
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | **Blocker:** L16 — Robo-Clown's thought bubble printed the hidden wheel (e.g. 4/5) | **Fixed.** Both sides now reason from the public test shots; bubbles never print fractions on the mystery cannon or on no-meter levels. |
+| 2 | L16 — decisions scored against the hidden wheel but explained with the estimate | **Fixed.** Scored and explained with the relative frequency you saw; wheel/mystery-specific retry hints. |
+| 3 | L6 — a perfect reader who skips the cards couldn't pass (no dud-likely question came up) | **Fixed.** A rematch whose history lacks one of the two questions opens with a load that asks it; L6's loads skewed. Card-free perfect play now passes L6 59 % / 92 % / 100 % by attempt 1 / 2 / 3 (simulated, 300 runs). |
+| 4 | Hidden order repeated after a page load → memorize and replay | **Fixed.** Only a level's very first play uses its authored seed; every replay is a fresh shuffle. |
+| 5 | Near-constant play ("always rival unless no pies left", "self unless only pies", alternate) passed far too often | **Fixed.** Odds reading is judged on informative calls only (certain, impossible and exact-½ don't count), needs 4, both questions answered; these strategies are now in the Monte Carlo tests (≤ 40 % in one attempt, all of it luck-wins). Tutorial loads balanced so leaning one way doesn't beat naive Bubu. |
+| 6 | Call-it chips farmable by copying the meter | **Fixed.** An exact call pays only when the meter is hidden (the toast says so). |
+| 7 | Result screen praised constant play | **Fixed.** Separate texts for "one kind of question still missing" and "too few decisions". Stars now measure accuracy only. |
+| 8 | Explanation card paired P(dud) with a pie icon; card washed out by the cream overlay; lucky wrong moves got no feedback | **Fixed.** Caption says which probability is shown, icon matches, card waits for the cream; lucky wrong calls get a short note. |
+| — | L7: firing at ½ while holding Eject scored wrong with no explanation | **Fixed:** a note says Eject would have given information first. |
+| — | Rival bubbles worked as a delayed meter on transfer levels | **Fixed** (see 1). |
+| — | Meter showed the old value during shots | **Fixed:** hidden while it isn't your move. |
+| — | Phone width on Twins levels: action row overflow, hp pies spilling, overlaps | **Fixed** in the portrait container query (re-captured at 390 × 844 for L1; Twins at phone width not re-captured). |
+| — | Hebrew agreement and counts ("התאומים העז", "נשארו 1 יריות", "0 עוגות מתוך 0") | **Fixed** with count/gender helpers. |
+| — | Pacing: 10–21 s between decisions | **Improved:** shorter waits, slow motion only for your own pie on a rival, and a ×2 speed toggle (F). Not re-measured by the playtester. |
+
+After the fixes: 66 unit tests pass; the headless UI run passes 15/17 first plays for the odds autoplayer (L6 and L8 were lost on luck without cards; L8 passed on the rematch), and **always-rival and always-self fail all 17 first plays through the real buttons**.
 
 ## Known limits
 
