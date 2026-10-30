@@ -51,8 +51,8 @@ test('evaluate: the thresholds', () => {
   const five = [dec([3, 4], 'rival'), dec([1, 4], 'self'), dec([2, 3], 'rival'), dec([1, 3], 'self'), dec([3, 5], 'rival')];
   let r = evaluate(five, false, true);
   assert.deepEqual([r.oddsRead, r.passed, r.won, r.stars], [true, true, false, 3]);
-  // four informative decisions are not enough, even with free certain and ½ shots added
-  r = evaluate([...five.slice(0, 4), dec([1, 1], 'rival'), dec([0, 2], 'self'), dec([1, 2], 'self')], false, true);
+  // three informative decisions are not enough, even with free certain and ½ shots added
+  r = evaluate([...five.slice(0, 3), dec([1, 1], 'rival'), dec([0, 2], 'self'), dec([1, 2], 'self')], false, true);
   assert.equal(r.oddsRead, false);
   // only one side ever asked (all pie-likely) → no odds pass, however accurate
   r = evaluate([dec([3, 4], 'rival'), dec([2, 3], 'rival'), dec([4, 5], 'rival'), dec([3, 5], 'rival'), dec([5, 6], 'rival')], false, true);

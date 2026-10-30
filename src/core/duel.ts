@@ -712,7 +712,7 @@ export function evaluate(all: Decision[], won: boolean, over: boolean, current: 
   const strictlyBest = new Set(decisions.filter((d) => d.kind === 'bet' && d.best.length === 1).map((d) => d.best[0]));
   const shown = new Set(decisions.filter((d) => d.correct).map((d) => d.choice));
   const varied = read(1) && read(-1) && [...strictlyBest].every((c) => shown.has(c));
-  const oddsRead = judged.length >= 5 && accuracy >= 0.8 && varied;
+  const oddsRead = judged.length >= 4 && accuracy >= 0.8 && varied;
   const passed = won || oddsRead;
   // stars measure decisions, not luck: the same accuracy earns the same stars whether you won or passed by odds
   const stars = !passed ? 0 : accuracy >= 0.95 ? 3 : accuracy >= 0.8 ? 2 : 1;
