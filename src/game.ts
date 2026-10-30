@@ -138,7 +138,7 @@ export class Game {
           L.rival.seats === 2 ? `<img src="${img}" alt="" class="twin a"/><img src="${this.stage.portrait(L.rival.model, 0xb8d8ff)}" alt="" class="twin b"/>` : `<img src="${img}" alt=""/>`
         }</div><div class="rival">${b.rival}</div><div class="tokens">${b.levels.map(token).join('')}</div></div>`;
       }).join('')}</div>
-      <button class="btn pink big" id="btn-go">${this.expertMode ? '🔥 ' : ''}שחקו! <small>שלב ${ltr(next)}</small></button>`;
+      <div class="row-btns"><button class="btn pink big" id="btn-go">${this.expertMode ? '🔥 ' : ''}שחקו! <small>שלב ${ltr(next)}</small></button>${this.save.passed[4] ? `<button class="btn cyan" id="btn-night2">🎡 לילה בקרנבל <small>(תערובות חדשות בכל לילה)</small></button>` : ''}</div>`;
     s.querySelectorAll<HTMLButtonElement>('.token').forEach((b) => (b.onclick = () => this.startLevel(Number(b.dataset.id), undefined, this.expertMode)));
     $('btn-back').onclick = () => this.showTitle();
     document.getElementById('mode-normal')?.addEventListener('click', () => {
@@ -151,7 +151,8 @@ export class Game {
       this.sfx.click();
       this.showSelect();
     });
-    $('btn-go').onclick = () => this.startLevel(next);
+    $('btn-go').onclick = () => this.startLevel(next, undefined, this.expertMode && !!this.save.passed[next]);
+    document.getElementById('btn-night2')?.addEventListener('click', () => this.startNight(1));
   }
 
   showHow() {

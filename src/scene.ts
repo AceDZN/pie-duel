@@ -35,7 +35,9 @@ class Rival {
   procedural: THREE.Group | null = null;
   bob = Math.random() * 10;
 
-  constructor(gltf: GLTF | undefined, tint: number | null, height: number) {
+  crown: THREE.Object3D | null = null;
+
+  constructor(gltf: GLTF | undefined, tint: number | null, height: number, champion = false) {
     this.height = height;
     if (gltf) {
       const model = cloneSkinned(gltf.scene);
@@ -45,6 +47,12 @@ class Rival {
           if (m.isMesh && m.material) {
             const mat = (m.material as THREE.MeshStandardMaterial).clone();
             mat.color = new THREE.Color(tint);
+            if (champion) {
+              // sequinned showman: a lavender sheen with a glint of metal
+              mat.emissive = new THREE.Color(0x240a3a);
+              mat.metalness = 0.35;
+              mat.roughness = Math.min(mat.roughness ?? 1, 0.45);
+            }
             m.material = mat;
           }
         });
@@ -66,6 +74,10 @@ class Rival {
       this.root.add(this.procedural);
     }
     this.root.add(this.face);
+    if (champion) {
+      this.crown = makeCrown();
+      this.root.add(this.crown);
+    }
   }
 
   play(a: Anim, fade = 0.25) {
@@ -102,6 +114,7 @@ class Rival {
     const p = this.facePos(new THREE.Vector3());
     this.root.worldToLocal(p);
     this.face.position.copy(p);
+    if (this.crown) this.crown.position.copy(p).add(V(0, this.height * 0.4, -0.04));
   }
 }
 
@@ -783,11 +796,11 @@ export class Stage {
     for (const r of this.rivals.values()) this.scene.remove(r.root);
     this.rivals.clear();
     const gltf = this.models[rivalModel as ModelName] ?? this.models['rival-bubu'];
-    const tall = ({ 'rival-mo': 1.85, 'rival-twin': 1.35, 'rival-rina': 1.45, 'rival-robo': 1.55 } as Record<string, number>)[rivalModel] ?? 1.6;
+    const tall = ({ 'rival-mo': 1.72, 'rival-twin': 1.35, 'rival-rina': 1.45, 'rival-robo': 1.55 } as Record<string, number>)[rivalModel] ?? 1.6;
     const tint = !this.models[rivalModel as ModelName] && rivalModel !== 'rival-bubu' ? fallbackTint(rivalModel) : null;
     if (seats === 1) {
-      const r = new Rival(gltf, tint, tall);
-      r.root.position.set(0.5, 0.18, -1.0);
+      const r = new Rival(gltf, tint, tall, rivalModel === 'rival-mo');
+      r.root.position.set(0.5, 0.18, rivalModel === 'rival-mo' ? -1.25 : -1.0);
       r.root.rotation.y = -0.12;
       this.scene.add(r.root);
       this.rivals.set('r1', r);
@@ -1492,7 +1505,7 @@ export class Stage {
     if (hit) return hit;
     const gltf = this.models[model as ModelName] ?? this.models['rival-bubu'];
     const tall = model === 'rival-mo' ? 1.85 : 1.6;
-    const r = new Rival(gltf, tint ?? (!this.models[model as ModelName] && model !== 'rival-bubu' ? fallbackTint(model) : null), tall);
+    const r = new Rival(gltf, tint ?? (!this.models[model as ModelName] && model !== 'rival-bubu' ? fallbackTint(model) : null), tall, model === 'rival-mo');
     r.update(0.4);
     const sc = new THREE.Scene();
     sc.add(new THREE.HemisphereLight(0xffffff, 0x553355, 2.2));
@@ -1536,7 +1549,7 @@ export class Stage {
 }
 
 function fallbackTint(model: string) {
-  return model === 'rival-robo' ? 0xbfc8d6 : model === 'rival-mo' ? 0xc9a0ff : model === 'rival-twin' ? 0xffc0e0 : 0xffffff;
+  return model === 'rival-robo' ? 0xbfc8d6 : model === 'rival-mo' ? 0xb9b0ff : model === 'rival-twin' ? 0xffc0e0 : 0xffffff;
 }
 
 function mysteryFace() {
@@ -1590,3 +1603,26 @@ const GRADE_SHADER = {
       gl_FragColor = c;
     }`,
 };
+
+/** Big Mo's champion crown (gold band, five points, a jewel). */
+function makeCrown() {
+  const g = new THREE.Group();
+  const gold = new THREE.MeshStandardMaterial({ color: 0xffc35a, metalness: 0.95, roughness: 0.22, emissive: 0x3a2400 });
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.07, 28, 1, true), gold);
+  band.material.side = THREE.DoubleSide;
+  g.add(band);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.09, 8), gold);
+    spike.position.set(Math.cos(a) * 0.125, 0.075, Math.sin(a) * 0.125);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), gold);
+    ball.position.set(spike.position.x, 0.125, spike.position.z);
+    g.add(spike, ball);
+  }
+  const jewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.025), new THREE.MeshStandardMaterial({ color: 0xff4fa3, emissive: 0x8a0a4a, metalness: 0.3, roughness: 0.1 }));
+  jewel.position.set(0, 0.0, 0.14);
+  g.add(jewel);
+  g.rotation.z = -0.12;
+  shadowsOn(g);
+  return g;
+}
