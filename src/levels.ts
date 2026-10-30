@@ -328,6 +328,7 @@ export const LEVELS: LevelDef[] = [
     hand: ['double', 'flavor'],
     shop: { offers: ['flavor', 'peek', 'eject', 'double', 'spinner', 'magnifier'] },
     rivalPeeks: 2,
+    rivalDoubles: 1,
     transfer: true,
     stage: 'rooftop',
     seed: 1717,

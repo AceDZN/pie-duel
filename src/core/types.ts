@@ -94,6 +94,8 @@ export interface LevelDef {
   shop?: ShopRule;
   /** the rival may also draw these cards (Big Mo). */
   rivalPeeks?: number;
+  /** Double cards the rival holds (Big Mo): fired when P(at least one pie in two) beats his best single shot. */
+  rivalDoubles?: number;
   transfer?: boolean;
   /** the flavor light shines on the next shell at the start of each of your turns. */
   autoFlavor?: boolean;

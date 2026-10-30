@@ -55,7 +55,7 @@ export type DuelEvent =
   | { t: 'chips'; delta: number; total: number; reason: string }
   | { t: 'test'; results: boolean[] }
   | { t: 'bet'; event: BetEvent; spins: [boolean, boolean]; happened: boolean }
-  | { t: 'thought'; who: PlayerId; key: 'dudDue' | 'pieDue' | 'odds' | 'always' | 'peek'; p?: Frac }
+  | { t: 'thought'; who: PlayerId; key: 'dudDue' | 'pieDue' | 'odds' | 'always' | 'peek' | 'double'; p?: Frac }
   | { t: 'explain'; key: 'selfOnPies' | 'rivalOnDuds' | 'unlucky' | 'goodCall'; p: Frac; choice: Choice }
   | { t: 'over'; winner: PlayerId | 'none'; reason: 'ko' | 'turns' };
 
@@ -79,6 +79,7 @@ export class Duel {
   meterShown = false;
   pendingCall: Frac | null = null;
   rivalPeeks: number;
+  rivalDoubles: number;
   rivalKnowsNext = false;
   decisions: Decision[] = [];
   events: DuelEvent[] = [];
@@ -103,6 +104,7 @@ export class Duel {
     this.hand = [...(level.hand ?? [])];
     this.meterUses = level.meter.kind === 'limited' ? level.meter.uses : level.meter.kind === 'on' ? Infinity : 0;
     this.rivalPeeks = level.rivalPeeks ?? 0;
+    this.rivalDoubles = level.rivalDoubles ?? 0;
     this.nextLoad(true);
   }
 
@@ -479,7 +481,7 @@ export class Duel {
   // ---------- rivals ----------
 
   /** What the rival will do now (pure; doesn't change state). */
-  rivalPlan(): { target: PlayerId; thought: DuelEvent & { t: 'thought' }; peek: boolean } {
+  rivalPlan(): { target: PlayerId; thought: DuelEvent & { t: 'thought' }; peek: boolean; double?: boolean } {
     const me = this.turn;
     const style = this.level.rival.style;
     const p = this.pFor(me);
@@ -487,6 +489,10 @@ export class Duel {
     if (style === 'naive') return { target: 'you', thought: { t: 'thought', who: me, key: 'always' }, peek: false };
     if (style === 'champion' && this.rivalPeeks > 0 && L.type === 'mag' && !this.rivalKnowsNext && cmp(p, frac(1, 3)) >= 0 && cmp(p, frac(2, 3)) <= 0)
       return { target: 'you', thought: { t: 'thought', who: me, key: 'peek', p }, peek: true };
+    if (style === 'champion' && this.rivalDoubles > 0 && this.shellsLeft() >= 2 && L.type !== 'bet') {
+      const pd = this.pDoubleFor(me);
+      if (cmp(pd, maxFrac(p, complement(p))) > 0) return { target: 'you', thought: { t: 'thought', who: me, key: 'double', p: pd }, peek: false, double: true };
+    }
     if (style === 'gambler' && 'history' in L && L.history.length >= 2) {
       const [x, y] = L.history.slice(-2);
       if (x === y) {
@@ -509,9 +515,36 @@ export class Duel {
       return true; // the next rivalStep acts on what it saw
     }
     this.events.push(plan.thought);
+    if (plan.double) {
+      // same table rule as your Double: each pie creams you; only two duds bring your counter-pie
+      this.rivalDoubles--;
+      this.events.push({ t: 'card', card: 'double', who: me });
+      const a = this.draw();
+      const b = this.draw();
+      this.shots++;
+      const before = this.shellsLeft() + 2;
+      for (const x of [a, b]) {
+        this.events.push({ t: 'shot', shooter: me, target: 'you', shell: x.shell, wheel: x.wheel, slot: before, of: before });
+        if (x.shell.kind === 'pie') this.hurt('you', 'pie');
+      }
+      if (a.shell.kind === 'dud' && b.shell.kind === 'dud') this.hurt(me, 'counter');
+      this.afterShot();
+      return true;
+    }
     this.shoot(me, plan.target);
     this.afterShot();
     return true;
+  }
+
+  /** P(at least one pie in the next two) from a seat's view. */
+  private pDoubleFor(seat: PlayerId): Frac {
+    const L = this.load;
+    if (L.type === 'mag') {
+      const known = seat === 'you' ? L.known : L.shells.map((_, i) => i === 0 && this.rivalKnowsNext);
+      return pAtLeastOneOfTwo({ shells: L.shells, known, nextFlavor: seat === 'you' ? L.nextFlavor : undefined });
+    }
+    const q = complement(this.pFor(seat));
+    return complement(frac(q.n * q.n, q.d * q.d));
   }
 
   // ---------- core shot ----------

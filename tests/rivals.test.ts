@@ -208,3 +208,29 @@ test(
     assert.equal(d.turn, 'r2');
   },
 );
+
+test('Big Mo fires his Double when "at least one pie in two" beats his best single shot, and only once', () => {
+  let used = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const d = new Duel(levelById(17), seed);
+    let guard = 0;
+    while (d.phase !== 'over' && guard++ < 400) {
+      if (d.phase === 'rival') {
+        const before = d.rivalDoubles;
+        const plan = d.rivalPlan();
+        d.rivalStep();
+        const ev = d.drain();
+        if (plan.double) {
+          assert.equal(d.rivalDoubles, before - 1);
+          assert.ok(ev.some((e) => e.t === 'card' && e.card === 'double' && e.who === 'r1'));
+          assert.equal(ev.filter((e) => e.t === 'shot').length, 2);
+          used++;
+        }
+      } else if (d.phase === 'shop') d.leaveShop();
+      else d.fire(d.options().best.includes('self') && !d.options().best.includes('rival') ? 'self' : 'r1');
+      d.drain();
+    }
+    assert.ok(d.rivalDoubles >= 0);
+  }
+  assert.ok(used > 20, `Big Mo used Double in ${used} of 200 matches`);
+});

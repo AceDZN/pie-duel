@@ -234,7 +234,7 @@ export class Game {
         return this.showThought(e);
       case 'card':
         if (e.who !== 'you') {
-          this.toast(`${this.level.rival.name} מציץ בפגז הבא! 👀`);
+          this.toast(e.card === 'double' ? `${this.level.rival.name} שולף כפולה! ✌️` : `${this.level.rival.name} מציץ בפגז הבא! 👀`);
           st.anim(e.who as Seat, 'laugh');
           this.sfx.card();
           await st.tweens.wait(900);
@@ -345,6 +345,7 @@ export class Game {
       dudDue: 'שתי עוגות ברצף… עכשיו בטוח יוצא ריק! אירה בעצמי.',
       pieDue: 'שני ריקים ברצף… עכשיו מגיעה עוגה! אליך!',
       peek: `${p}? לא בטוח… אציץ.`,
+      double: `לפחות עוגה אחת משתיים: ${p}. כפולה!`,
     };
     const th = $('thought');
     th.innerHTML = `<b>${name}:</b> ${text[e.key]}`;
