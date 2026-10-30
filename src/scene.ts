@@ -106,14 +106,23 @@ class Rival {
     return this.root.localToWorld(out.set(0, this.height * 0.88, 0.15));
   }
 
-  update(dt: number) {
+  update(dt: number, camPos?: THREE.Vector3) {
     this.mixer?.update(dt);
     this.bob += dt;
     if (this.procedural) this.procedural.position.y = Math.sin(this.bob * 2) * 0.01;
     // keep the cream on the face as it moves
     const p = this.facePos(new THREE.Vector3());
-    this.root.worldToLocal(p);
-    this.face.position.copy(p);
+    if (camPos) {
+      // cream sits on the skin: push the anchor out to the front of the (big, chibi) head and face the camera
+      const surf = p.clone().addScaledVector(camPos.clone().sub(p).normalize(), this.height * 0.07);
+      this.root.worldToLocal(surf);
+      this.face.position.copy(surf);
+      this.face.lookAt(camPos);
+      this.root.worldToLocal(p);
+    } else {
+      this.root.worldToLocal(p);
+      this.face.position.copy(p);
+    }
     if (this.crown) this.crown.position.copy(p).add(V(0, this.height * 0.4, -0.04));
   }
 }
@@ -405,16 +414,16 @@ export class Stage {
     this.buildShelf();
     // chalkboards
     const cb1 = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.95), new THREE.MeshStandardMaterial({ map: chalkboard(['עוגות', 'מגישות', 'עולם טוב', 'יותר!']) }));
-    cb1.position.set(-2.05, 1.05, -0.9);
-    cb1.rotation.y = 0.55;
+    cb1.position.set(-1.85, 1.0, -1.35);
+    cb1.rotation.y = 0.42;
     const cb2 = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.95), new THREE.MeshStandardMaterial({ map: chalkboard(['תמיד', 'יש מקום', 'לעוגה', 'נוספת!']) }));
     cb2.position.set(1.65, 1.55, -2.45);
     b.add(cb1, cb2);
     // neon sign
     const signMat = new THREE.MeshBasicMaterial({ map: neonSign('PIE DUEL'), transparent: true, toneMapped: false });
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.64), signMat);
-    sign.position.set(-2.4, 2.35, -1.6);
-    sign.rotation.y = 0.5;
+    sign.position.set(-1.45, 2.42, -2.35);
+    sign.rotation.y = 0.18;
     b.add(sign);
     // ferris wheel far left
     const fw = new THREE.Group();
@@ -670,6 +679,7 @@ export class Stage {
     knob.position.y = 0.23;
     this.lever.add(stick, knob);
     this.lever.position.set(0.21, 0.22, 0.0);
+    this.lever.visible = !g; // the Tripo machine has its own lever
     this.lever.rotation.z = -0.3;
     shadowsOn(this.lever);
     swivel.add(this.lever);
@@ -682,21 +692,21 @@ export class Stage {
   private buildWheels() {
     // spinner wheels stand on the table, right of the cannon; shown only for spinner/coin rounds
     this.scene.add(this.wheelGroup);
-    this.wheelGroup.position.set(-0.95, TABLE_Y, 0.3);
-    this.wheelGroup.rotation.y = 0.35;
+    this.wheelGroup.position.set(0.2, TABLE_Y, 0.34);
+    this.wheelGroup.rotation.y = -0.12;
     for (let i = 0; i < 2; i++) {
-      const w = new THREE.Mesh(new THREE.CircleGeometry(0.19, 48), new THREE.MeshStandardMaterial({ map: wheelFace(1, 4), roughness: 0.5 }));
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.03, 0.18, 8), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.8 }));
-      stand.position.y = 0.09;
+      const w = new THREE.Mesh(new THREE.CircleGeometry(0.135, 48), new THREE.MeshStandardMaterial({ map: wheelFace(1, 4), roughness: 0.5 }));
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.026, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.8 }));
+      stand.position.y = 0.05;
       const holder = new THREE.Group();
       holder.add(stand);
-      w.position.y = 0.36;
+      w.position.y = 0.22;
       holder.add(w);
       const pointer = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 3), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-      pointer.position.set(0, 0.58, 0.01);
+      pointer.position.set(0, 0.385, 0.01);
       pointer.rotation.z = Math.PI;
       holder.add(pointer);
-      holder.position.x = i * 0.42;
+      holder.position.x = i * 0.32;
       shadowsOn(holder);
       this.wheelGroup.add(holder);
       this.wheels.push(w);
@@ -706,7 +716,7 @@ export class Stage {
       new THREE.MeshStandardMaterial({ map: neonSign('A', '#ff4fa3'), metalness: 0.5 }),
       new THREE.MeshStandardMaterial({ map: neonSign('B', '#3ee6ff'), metalness: 0.5 }),
     ]);
-    this.coin.position.set(-0.55, TABLE_Y + 0.01, 0.75);
+    this.coin.position.set(-0.05, TABLE_Y + 0.01, 0.75);
     this.coin.visible = false;
     this.scene.add(this.coin);
     this.wheelGroup.visible = false;
@@ -725,7 +735,7 @@ export class Stage {
     pole.position.y = 0.5;
     d.add(body, head, target, pole);
     shadowsOn(d);
-    d.position.set(-1.25, 0, -1.6);
+    d.position.set(1.25, 0, -1.75);
     d.visible = false;
     this.scene.add(d);
   }
@@ -739,13 +749,31 @@ export class Stage {
     const rail = new THREE.Mesh(new THREE.BoxGeometry(8, 0.08, 0.08), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.7 }));
     rail.position.set(0, 1.05, -3.2);
     const city = new THREE.Group();
-    for (let i = 0; i < 40; i++) {
-      const h = 1 + Math.random() * 6;
-      const bld = new THREE.Mesh(new THREE.BoxGeometry(0.8 + Math.random(), h, 0.8), new THREE.MeshStandardMaterial({ color: 0x1a1430, emissive: 0x2a1a50, emissiveIntensity: 0.3 }));
-      bld.position.set(-12 + i * 0.65, h / 2 - 3, -9 - Math.random() * 6);
+    const win = windowsTexture();
+    for (let i = 0; i < 46; i++) {
+      const h = 2 + Math.random() * 7;
+      const w = 0.9 + Math.random() * 1.2;
+      const t = win.clone();
+      t.repeat.set(w * 1.5, h * 1.2);
+      t.offset.set(Math.random(), Math.random());
+      t.needsUpdate = true;
+      const bld = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.9), new THREE.MeshStandardMaterial({ color: 0x120d22, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.9 }));
+      bld.position.set(-16 + i * 0.72, h / 2 - 2.2, -9 - Math.random() * 7);
       city.add(bld);
     }
-    r.add(floor, rail, city);
+    // a big moon and a sky dome
+    const moon = new THREE.Mesh(new THREE.CircleGeometry(1.4, 48), new THREE.MeshBasicMaterial({ color: 0xfff2c8, toneMapped: false, fog: false }));
+    moon.position.set(6, 7.5, -16);
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(30, 32, 16), new THREE.MeshBasicMaterial({ map: backdrop(['#05030f', '#160c34', '#3a1a5a']), side: THREE.BackSide, fog: false }));
+    // string lights over the roof
+    const bulbM = new THREE.MeshBasicMaterial({ color: 0xffd98a, toneMapped: false });
+    for (let i = 0; i <= 20; i++) {
+      const k = i / 20;
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), bulbM);
+      b.position.set(-3 + k * 6, 2.7 - Math.sin(k * Math.PI) * 0.4, -1.6);
+      r.add(b);
+    }
+    r.add(floor, rail, city, moon, sky);
     r.visible = false;
     this.scene.add(r);
   }
@@ -818,9 +846,10 @@ export class Stage {
     this.booth.visible = look !== 'rooftop';
     this.rooftop.visible = look === 'rooftop';
     const dim = look === 'dim';
-    this.lights.hemi.intensity = dim ? 0.35 : look === 'rooftop' ? 0.6 : 0.9;
-    this.lights.key.intensity = dim ? 0.9 : 2.0;
-    this.lights.neon.forEach((l) => (l.intensity = dim ? 2.2 : 5.5));
+    this.lights.hemi.intensity = dim ? 0.18 : look === 'rooftop' ? 0.6 : 0.9;
+    this.lights.key.intensity = dim ? 0.45 : 2.0;
+    this.lights.neon.forEach((l) => (l.intensity = dim ? 1.4 : 5.5));
+    if (dim) this.renderer.toneMappingExposure = 0.78;
     this.rimLight.intensity = dim ? 6 : 9;
     this.scene.fog = new THREE.Fog(dim ? 0x0a0618 : this.theme.fog, dim ? 5 : 9, dim ? 16 : 26);
     this.scene.background = new THREE.Color(dim ? 0x0a0618 : this.theme.fog);
@@ -894,6 +923,7 @@ export class Stage {
     this.wheelGroup.visible = mode !== 'none';
     this.coin.visible = mode === 'coin';
     this.hopper.visible = mode === 'none';
+    this.dummy.visible = mode === 'mystery';
     const holders = this.wheelGroup.children;
     holders[1].visible = mode === 'coin';
     if (mode === 'none') return;
@@ -914,7 +944,7 @@ export class Stage {
       (this.wheels[1].material as THREE.MeshStandardMaterial).map = face(b, 'B');
       (this.wheels[1].material as THREE.MeshStandardMaterial).needsUpdate = true;
     }
-    this.wheelGroup.position.x = mode === 'coin' ? -1.05 : -0.95;
+    this.wheelGroup.position.x = mode === 'coin' ? 0.06 : 0.22;
     this.dummy.visible = mode === 'mystery';
   }
 
@@ -1088,13 +1118,19 @@ export class Stage {
     this.cream.burst(at, V(0, 0, -1), 90);
     this.shake = 0.6;
     // stick a few blobs on the face
-    for (let i = 0; i < 6; i++) {
-      const blob = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 12, 8), new THREE.MeshStandardMaterial({ color: 0xfffaf0, roughness: 0.3 }));
-      blob.position.set((Math.random() - 0.5) * 0.14, (Math.random() - 0.4) * 0.14, 0.02 + Math.random() * 0.03);
-      blob.scale.z = 0.6;
+    const creamMat = new THREE.MeshStandardMaterial({ color: 0xfffaf0, roughness: 0.28, emissive: 0x2a2620 });
+    for (let i = 0; i < 7; i++) {
+      const blob = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), creamMat);
+      const sz = 0.04 + Math.random() * 0.045;
+      blob.scale.set(sz, sz * 0.85, sz * 0.45);
+      blob.position.set((Math.random() - 0.5) * 0.2, (Math.random() - 0.35) * 0.16, Math.random() * 0.02);
       r.face.add(blob);
     }
-    while (r.face.children.length > 26) r.face.remove(r.face.children[0]);
+    // a drip running down the cheek
+    const drip = new THREE.Mesh(new THREE.CapsuleGeometry(0.018, 0.08, 4, 8), creamMat);
+    drip.position.set((Math.random() - 0.5) * 0.14, -0.1, 0.01);
+    r.face.add(drip);
+    while (r.face.children.length > 40) r.face.remove(r.face.children[0]);
     r.play('hit');
     this.tweens.wait(1700).then(() => r.play('idle', 0.5));
   }
@@ -1175,7 +1211,7 @@ export class Stage {
     this.tweens.update(dtMs);
     const sdt = dt * this.tweens.timeScale;
     this.elapsed += sdt;
-    for (const r of this.rivals.values()) r.update(sdt);
+    for (const r of this.rivals.values()) r.update(sdt, this.camera.position);
     this.confetti.update(sdt);
     this.cream.update(sdt);
     // cannon swivel and recoil kick
@@ -1554,6 +1590,24 @@ function fallbackTint(model: string) {
 
 function mysteryFace() {
   return wheelFace(-1, 8, '?');
+}
+
+function windowsTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, 64, 64);
+  for (let y = 4; y < 64; y += 12)
+    for (let x = 4; x < 64; x += 10) {
+      if (Math.random() < 0.45) continue;
+      g.fillStyle = Math.random() < 0.3 ? '#ffd27a' : Math.random() < 0.5 ? '#9ad8ff' : '#ffb0e0';
+      g.fillRect(x, y, 5, 7);
+    }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
 }
 
 function makeDust() {

@@ -7,14 +7,15 @@ import type { CardId, LevelDef, Load } from './types';
 
 const RIVALS = [
   { name: 'סבתא רינה', style: 'odds', model: 'rival-rina', seats: 1 },
+  { name: 'התאומים', style: 'odds', model: 'rival-twin', seats: 2 },
   { name: 'רובו־ליצן', style: 'gambler', model: 'rival-robo', seats: 1 },
   { name: 'ביג מו', style: 'champion', model: 'rival-mo', seats: 1 },
-  { name: 'התאומים', style: 'odds', model: 'rival-twin', seats: 2 },
 ] as const;
 
 function draft(night: number, seed: number): LevelDef {
   const r = new Rng(seed);
-  const rival = RIVALS[r.int(RIVALS.length)];
+  // nights walk through the rivals in booth order: Rina, the Twins, Robo-Clown, Big Mo, then around again
+  const rival = RIVALS[(night - 1) % RIVALS.length];
   const loads: Load[] = [];
   const n = 5 + r.int(3);
   for (let i = 0; i < n; i++) {
@@ -42,7 +43,7 @@ function draft(night: number, seed: number): LevelDef {
     id: 100 + night,
     booth: 5,
     title: `לילה בקרנבל #${night}`,
-    goal: 'תערובות חדשות כל לילה. ספרו, חשבו — וירו.',
+    goal: 'תערובות חדשות כל לילה. ספרו, חשבו — וזרקו.',
     rival: { ...rival },
     hp,
     loads,
@@ -52,7 +53,7 @@ function draft(night: number, seed: number): LevelDef {
     shop,
     rivalPeeks: rival.style === 'champion' ? 2 : 0,
     autoFlavor: loads.some((l) => l.type === 'mag' && !!l.flavors),
-    stage: night % 3 === 0 ? 'rooftop' : 'booth',
+    stage: rival.model === 'rival-mo' ? 'rooftop' : 'booth',
     seed,
     modules: ['/math/grade-8/chapter-5/classical-probability', '/math/grade-9/chapter-6/dependent-and-independent-events'],
   };

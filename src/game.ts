@@ -9,7 +9,7 @@ import { generateNight } from './core/endless';
 import type { Stage, Seat } from './scene';
 import type { Sfx } from './audio';
 import { loadSave, logEvent, writeSave, type Save } from './save';
-import { BET_NAME, CARD_INFO, count, rivalVerb, DUD_SVG, FACE_YOU, MYSTERY_SVG, PIE_SVG, RIVAL_FACE, RULES_HTML, fr, ltr } from './text';
+import { BET_NAME, CARD_INFO, NEW_IN_LEVEL, count, rivalVerb, DUD_SVG, FACE_YOU, MYSTERY_SVG, PIE_SVG, RIVAL_FACE, RULES_HTML, fr, ltr } from './text';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -63,7 +63,7 @@ export class Game {
     t.innerHTML = `
       <div class="kicker">דוכן הקרנבל של חצות · הסתברות לכיתות ח׳–ט׳</div>
       <h1 class="logo">דו־קרב העוגות</h1>
-      <div class="subtitle">תותח עוגות, תערובת ידועה, סדר נסתר. סופרים מה נשאר — ומחליטים במי לירות.</div>
+      <div class="subtitle">מכונת עוגות, תערובת ידועה, סדר נסתר. סופרים מה נשאר — ומחליטים במי לזרוק.</div>
       <button class="btn gold big" id="btn-play"><svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg><span>${next === 1 ? 'שחקו' : 'המשיכו'}</span></button>
       <div class="row-btns">
         <button class="btn dark" id="btn-levels">בחירת דוכן</button>
@@ -76,7 +76,7 @@ export class Game {
         <label><input type="checkbox" id="opt-music" ${this.save.settings.music === false ? '' : 'checked'} /> מוזיקה</label>
         <label><input type="checkbox" id="opt-reduced" ${this.save.settings.reduced ? 'checked' : ''} /> פחות תנועה</label>
       </div>
-      <div class="keys"><span><kbd>1</kbd>ירי ביריב</span><span><kbd>2</kbd>ירי בעצמי</span><span><kbd>3</kbd>תאום שני</span><span><kbd>H</kbd>מד סיכויים</span><span><kbd>P</kbd>השהיה</span><span><kbd>M</kbd>צליל</span><span><kbd>F</kbd>מהירות ×2</span></div>`;
+      <div class="keys"><span><kbd>1</kbd>זריקה ליריב</span><span><kbd>2</kbd>זריקה עליי</span><span><kbd>3</kbd>תאום שני</span><span><kbd>H</kbd>מד סיכויים</span><span><kbd>P</kbd>השהיה</span><span><kbd>M</kbd>צליל</span><span><kbd>F</kbd>מהירות ×2</span></div>`;
     $('btn-play').onclick = () => this.startLevel(next);
     $('btn-levels').onclick = () => this.showSelect();
     $('btn-how').onclick = () => this.showHow();
@@ -156,7 +156,7 @@ export class Game {
   }
 
   showHow() {
-    this.overlay(`<h2>איך משחקים?</h2>${RULES_HTML}<p>לפני ירייה אפשר להניח את האסימון על <b>סולם ההסתברות</b> — ניחוש מדויק שווה ז׳יטונים. בין סבבים קונים קלפי טריקים שמשנים את הסיכויים.</p><div class="row-btns"><button class="btn gold" id="ov-ok">הבנתי!</button></div>`, {
+    this.overlay(`<h2>איך משחקים?</h2>${RULES_HTML}<p>לפני זריקה אפשר להניח את האסימון על <b>סולם ההסתברות</b> — ניחוש מדויק שווה ז׳יטונים. בין סבבים קונים קלפי טריקים שמשנים את הסיכויים.</p><div class="row-btns"><button class="btn gold" id="ov-ok">הבנתי!</button></div>`, {
       'ov-ok': () => this.closeOverlay(),
     });
   }
@@ -213,7 +213,8 @@ export class Game {
     $('hud').classList.remove('hidden');
     $('explain').classList.add('hidden');
     $('cream-overlay').className = '';
-    const themeN = this.level.id >= 100 ? ((((this.level.id - 101) % 4) + 1) as 1 | 2 | 3 | 4) : this.level.booth;
+    const byRival: Record<string, 1 | 2 | 3 | 4 | 5> = { 'rival-bubu': 1, 'rival-rina': 2, 'rival-twin': 3, 'rival-robo': 4, 'rival-mo': 5 };
+    const themeN = this.level.id >= 100 ? byRival[this.level.rival.model] ?? 2 : this.level.booth;
     this.stage.setLevel(this.level.rival.model, this.level.rival.seats, this.level.stage ?? 'booth', themeN);
     this.sfx.music(themeN);
     this.stage.frame('home', 0);
@@ -231,7 +232,8 @@ export class Game {
     this.setActions('none');
     const firstEver = id === 1 && this.attempt === 1 && !this.level.expert;
     const carried = (this.save.carry[k] ?? []).length;
-    $('goal-card').innerHTML = `<h3>${this.level.title}</h3><p>${this.level.goal}</p>${firstEver ? RULES_HTML : ''}${
+    const newThing = this.level.id < 100 && !this.level.expert ? NEW_IN_LEVEL[this.level.id] : '';
+    $('goal-card').innerHTML = `<h3>${this.level.title}</h3>${newThing ? `<div class="new-tag">✨ חדש: ${newThing}</div>` : ''}<p>${this.level.goal}</p>${firstEver ? RULES_HTML : ''}${
       this.level.transfer ? '<p>🎯 <b>שלב מבחן:</b> בלי רמזים.</p>' : ''
     }${carried ? `<p>ההחלטות הטובות מהניסיון הקודם נשמרות (${ltr(carried)}).</p>` : ''}<div class="row"><button class="btn pink" id="goal-go">יאללה!</button></div>`;
     this.intro().then(() => {
@@ -332,7 +334,7 @@ export class Game {
         return this.showThought(e);
       case 'card':
         if (e.who !== 'you') {
-          this.toast(e.card === 'double' ? `${this.level.rival.name} שולף כפולה! ✌️` : `${this.level.rival.name} מציץ בפגז הבא! 👀`);
+          this.toast(e.card === 'double' ? `${this.level.rival.name} שולף כפולה! ✌️` : `${this.level.rival.name} מציץ במנה הבא! 👀`);
           st.anim(e.who as Seat, 'laugh');
           this.sfx.card();
           await st.tweens.wait(900);
@@ -340,16 +342,18 @@ export class Game {
         return;
       case 'reveal': {
         if (e.by === 'flavor') {
-          this.toast(`פנס הטעמים: הפגז הבא ב${e.flavor === 'choc' ? 'שוקולד 🍫' : 'וניל 🍦'}`);
+          this.toast(`פנס הטעמים: המנה הבאה ב${e.flavor === 'choc' ? 'שוקולד 🍫' : 'וניל 🍦'}`);
         } else if (e.shell) {
           const what = e.shell.kind === 'pie' ? 'עוגה 🥧' : 'ריק 🎉';
-          this.toast(e.by === 'peek' ? `הצצה: הפגז הבא — ${what}` : `זכוכית מגדלת: הפגז השני — ${what}`);
+          this.toast(e.by === 'peek' ? `הצצה: המנה הבאה — ${what}` : `זכוכית מגדלת: המנה השנייה — ${what}`);
         }
+        this.clearCall();
         this.renderMag();
         await st.tweens.wait(500);
         return;
       }
       case 'eject':
+        this.clearCall();
         this.toast(`נפלט: ${e.shell.kind === 'pie' ? 'עוגה 🥧' : 'ריק 🎉'}`);
         st.removeFromHopper(e.shell.kind);
         this.dec(e.shell.kind);
@@ -410,14 +414,14 @@ export class Game {
       st.showWheels('spin', load.pie);
       this.renderMag();
       this.renderSide();
-      this.banner(`סביבון: ${fr(load.pie.n, load.pie.d)} מהגלגל עוגות`, `עם החזרה — הסיכוי זהה בכל סיבוב · ${count(load.spinsLeft, 'סיבוב אחד', 'סיבובים')}`);
+      this.banner(`גלגל המזל: ${fr(load.pie.n, load.pie.d)} מהגלגל עוגות`, `עם החזרה — הסיכוי זהה בכל סיבוב · ${count(load.spinsLeft, 'סיבוב אחד', 'סיבובים')}`);
       this.sfx.whoosh();
       await st.tweens.wait(1500);
     } else if (load.type === 'coin') {
       st.showWheels('coin', load.a, load.b);
       this.renderMag();
       this.renderSide();
-      this.banner('מטבע בוחר גלגל', `גלגל A: ${fr(load.a.n, load.a.d)} עוגות · גלגל B: ${fr(load.b.n, load.b.d)} · P(A) = ${ltr(str(load.coin))}`);
+      this.banner(load.coin.n * 2 === load.coin.d ? 'מטבע בוחר גלגל' : 'מטבע מוטה בוחר גלגל', `גלגל A: ${fr(load.a.n, load.a.d)} עוגות · גלגל B: ${fr(load.b.n, load.b.d)} · P(A) = ${ltr(str(load.coin))}`);
       await st.tweens.wait(1700);
     } else if (load.type === 'bet') {
       st.showWheels('spin', load.pie);
@@ -429,7 +433,7 @@ export class Game {
       st.showWheels('mystery');
       this.renderMag();
       this.renderSide();
-      this.banner('התותח המסתורי', 'לא יודעים כמה עוגות בגלגל. ירו ירי ניסיון על הבובה!');
+      this.banner('המכונה המסתורית', 'לא יודעים כמה עוגות בגלגל. זרקו זריקות ניסיון על הבובה!');
       await st.tweens.wait(1400);
     }
     $('banner').classList.add('hidden');
@@ -442,9 +446,9 @@ export class Game {
     const p = e.p && showP ? ltr(str(e.p)) : '';
     const likely = e.p && cmp(e.p, HALF) < 0 ? 'dud' : 'pie';
     const text: Record<string, string> = {
-      always: 'אני תמיד יורה בך! חה!',
-      odds: showP ? (likely === 'dud' ? `סיכוי לעוגה ${p}… אירה בעצמי.` : `סיכוי לעוגה ${p}. אליך!`) : likely === 'dud' ? 'הממ… אני מעז. אירה בעצמי!' : 'הממ… אליך!',
-      dudDue: 'שתי עוגות ברצף… עכשיו בטוח יוצא ריק! אירה בעצמי.',
+      always: 'אני תמיד זורק עליך! חה!',
+      odds: showP ? (likely === 'dud' ? `סיכוי לעוגה ${p}… אזרוק על עצמי.` : `סיכוי לעוגה ${p}. אליך!`) : likely === 'dud' ? 'הממ… אני מעז. אזרוק על עצמי!' : 'הממ… אליך!',
+      dudDue: 'שתי עוגות ברצף… עכשיו בטוח יוצא ריק! אזרוק על עצמי.',
       pieDue: 'שני ריקים ברצף… עכשיו מגיעה עוגה! אליך!',
       peek: showP ? `${p}? לא בטוח… אציץ.` : 'לא בטוח… אציץ.',
       double: showP ? `לפחות עוגה אחת משתיים: ${p}. כפולה!` : 'כפולה!',
@@ -586,34 +590,34 @@ export class Game {
     if (e.key === 'lucky') {
       // a wrong call that got lucky: a short, non-blocking note
       const side = cmp(p, HALF) > 0 ? 'לעוגה' : 'לריק';
-      this.toast(`מזל! אבל הסיכוי ${side} היה ${ltr(str(cmp(p, HALF) > 0 ? p : complement(p)))} — ההימור ההפוך היה טוב יותר`);
+      this.toast(`מזל! אבל ${this.decisionWhy || `הסיכוי ${side} היה ${ltr(str(cmp(p, HALF) > 0 ? p : complement(p)))}`} — הכיוון ההפוך היה טוב יותר`);
       this.lastExplain = e.key;
       await this.stage.tweens.wait(1200);
       return;
     }
     if (e.key === 'ejectBetter') {
-      this.toast(`בדיוק ${ltr('1/2')} וקלף פליטה ביד: פליטה הייתה נותנת מידע לפני הירייה`);
+      this.toast(`בדיוק ${ltr('1/2')} וקלף פליטה ביד: פליטה הייתה נותנת מידע לפני הזריקה`);
       this.lastExplain = e.key;
       await this.stage.tweens.wait(1400);
       return;
     }
     // let the cream on your screen clear before the card
     await this.stage.tweens.wait(900);
-    const raw = s && this.duel?.load.type === 'mag' ? fr(s.pies, s.total) : ltr(str(p));
     const q = complement(p);
-    let big = raw;
+    const why = this.decisionWhy;
+    let big = ltr(str(p));
     let icon = '🥧';
     let caption = 'הסתברות לעוגה';
     let body = '';
     if (e.key === 'selfOnPies') {
-      body = s && this.duel?.load.type === 'mag' ? `${s.pies === 1 ? 'נשארה' : 'נשארו'} ${count(s.pies, 'עוגה אחת', 'עוגות')} מתוך ${ltr(s.total)} — סיכוי של ${raw} לעוגה, יותר מחצי. עדיף היה לירות ביריב.` : `הסיכוי לעוגה היה ${ltr(str(p))} — יותר מחצי. עדיף היה לירות ביריב.`;
+      body = `${why}. ${p.n === p.d ? 'זה ודאי' : 'זה יותר מחצי'} — עדיף היה לזרוק על היריב.`;
     } else if (e.key === 'rivalOnDuds') {
-      body = `הסיכוי לעוגה היה רק ${raw}, ולריק ${ltr(str(q))} — המאורע המשלים. עדיף היה לירות בעצמך ולקבל בונוס אומץ.`;
+      body = `${why}. הסתברות לריק = ${ltr(`1 − ${str(p)} = ${str(q)}`)} (המאורע המשלים) — ${q.n === q.d ? 'ודאי' : 'יותר מחצי'}. עדיף היה לכוון לעצמכם ולקבל בונוס אומץ.`;
       big = ltr(str(q));
       icon = '🎉';
       caption = 'הסתברות לריק';
     } else {
-      body = `בחירה נכונה! הסיכוי היה לטובתך (${ltr(str(cmp(p, HALF) > 0 ? p : q))}), אבל גם סיכוי טוב לא מבטיח. החלטות טובות הן מה שנספר לכוכבים.`;
+      body = `בחירה נכונה! ${why}. גם סיכוי טוב לא מבטיח — החלטות טובות הן מה שנספר לכוכבים.`;
       big = '👍';
       icon = '🍀';
       caption = '';
@@ -632,6 +636,20 @@ export class Game {
       $('explain-ok').onclick = () => {
         this.sfx.click();
         done();
+      };
+    });
+  }
+
+  /** A blocking cream card with a "continue" button (worked explanations). */
+  private async card(html: string) {
+    const box = $('explain');
+    box.innerHTML = `${html}<button class="btn gold" id="explain-ok">ממשיכים</button>`;
+    box.classList.remove('hidden');
+    await new Promise<void>((resolve) => {
+      $('explain-ok').onclick = () => {
+        this.sfx.click();
+        box.classList.add('hidden');
+        resolve();
       };
     });
   }
@@ -671,6 +689,14 @@ export class Game {
     this.banner(e.happened ? 'ההימור הצליח!' : 'ההימור נכשל…', e.happened ? 'העוגה טסה אל היריב' : 'העוגה טסה אליך');
     await st.tweens.wait(900);
     $('banner').classList.add('hidden');
+    const dec = this.duel?.decisions[this.duel.decisions.length - 1];
+    if (dec && dec.kind === 'bet' && L.type === 'bet' && !dec.correct) {
+      const pp = str(L.pie);
+      const qq = str(complement(L.pie));
+      const form: Record<BetEvent, string> = { twoPies: `${pp}·${pp}`, noPie: `${qq}·${qq}`, exactlyOne: `${pp}·${qq} + ${qq}·${pp}`, atLeastOne: `1 − ${qq}·${qq}`, pieThenDud: `${pp}·${qq}` };
+      const lines = L.options.map((o) => `<li>${BET_NAME[o]}: ${ltr(`${form[o]} = ${str(dec.values[o]!)}`)}</li>`).join('');
+      await this.card(`<div class="row"><span class="big">🌳</span></div><p>בדיאגרמת העץ כופלים לאורך הענף:</p><ul style="text-align:start">${lines}</ul><p>${BET_NAME[dec.best[0] as BetEvent]} סביר יותר.</p>`);
+    }
   }
 
   // ================================================================= your turn
@@ -686,10 +712,10 @@ export class Game {
     let msg = '';
     let btn = '';
     if (d.level.id === 1 && d.decisions.length === 0)
-      msg = `${count(r.n, 'עוגה אחת', 'עוגות')} מתוך ${ltr(r.d)} פגזים: הסיכוי לעוגה ${fr(r.n, r.d)} — פחות מחצי. ריק סביר יותר, אז ירו <b>בעצמכם</b> וקבלו בונוס אומץ!`;
-    else if (r.d > 0 && r.n === r.d && d.level.id <= 2) msg = `נשארו רק עוגות: ${fr(r.n, r.d)} = 1, <b>ודאי</b>. ירו ב${this.level.rival.name}!`;
-    else if (r.d > 0 && r.n === 0 && d.level.id <= 2) msg = `לא נשארה אף עוגה: ${fr(0, r.d)} = 0, <b>בלתי אפשרי</b> לחטוף. ירו בעצמכם!`;
-    else if (d.level.id === 1 && d.decisions.length === 1) msg = `עכשיו ${fr(r.n, r.d)}. ${2 * r.n > r.d ? 'יותר מחצי — ירו ביריב.' : 2 * r.n < r.d ? 'פחות מחצי — ירו בעצמכם.' : 'בדיוק חצי — שתי הבחירות טובות.'}`;
+      msg = `${count(r.n, 'עוגה אחת', 'עוגות')} מתוך ${ltr(r.d)} מנות: הסיכוי לעוגה ${fr(r.n, r.d)} — פחות מחצי. ריק סביר יותר, אז כוונו <b>לעצמכם</b> וקבלו בונוס אומץ!`;
+    else if (r.d > 0 && r.n === r.d && d.level.id <= 2) msg = `נשארו רק עוגות: ${fr(r.n, r.d)} = 1, <b>ודאי</b>. זרקו על ${this.level.rival.name}!`;
+    else if (r.d > 0 && r.n === 0 && d.level.id <= 2) msg = `לא נשארה אף עוגה: ${fr(0, r.d)} = 0, <b>בלתי אפשרי</b> לחטוף. כוונו לעצמכם!`;
+    else if (d.level.id === 1 && d.decisions.length === 1) msg = `עכשיו ${fr(r.n, r.d)}. ${2 * r.n > r.d ? 'יותר מחצי — זרקו על היריב.' : 2 * r.n < r.d ? 'פחות מחצי — כוונו לעצמכם.' : 'בדיוק חצי — שתי הבחירות טובות.'}`;
     if (!msg) return;
     btn = 2 * r.n > r.d ? '.fire.rival' : 2 * r.n < r.d ? '.fire.self' : '';
     c.innerHTML = `💡 ${msg}`;
@@ -697,8 +723,12 @@ export class Game {
     if (btn) document.querySelector(btn)?.classList.add('pulse');
   }
 
+  private decisionWhy = '';
+
   private readyForYou() {
     const d = this.duel!;
+    this.reveal = false;
+    this.sidePanelFold();
     if (d.phase === 'test') this.setActions('test');
     else if (d.phase === 'bet') this.setActions('bet');
     else this.setActions('fire');
@@ -743,7 +773,10 @@ export class Game {
     this.sfx.click();
     const raw = this.rawP();
     this.decisionSnapshot = { pies: raw.n, total: raw.d };
+    this.decisionWhy = this.decisionContext();
     if (this.callValue) d.call(frac(this.callValue.n, this.callValue.d));
+    this.reveal = true;
+    this.renderSide();
     const before = d.decisions.length;
     if (!d.fire(target)) return;
     this.logDecisions(before);
@@ -780,7 +813,7 @@ export class Game {
     const s = $('shop');
     s.classList.remove('hidden');
     const render = () => {
-      s.innerHTML = `<div class="shop-title"><h2>חנות הקלפים</h2><small>בחרו קלף לסבב הבא · יש לכם <span class="chip-ico" style="display:inline-block;width:1em;height:1em;vertical-align:middle"></span> ${ltr(d.chips)}</small></div>
+      s.innerHTML = `<div class="shop-title"><h2>חנות הקלפים</h2><small>קנו קלפים לסבב הבא (עד שלושה ביד) · יש לכם <span class="chip-ico" style="display:inline-block;width:1em;height:1em;vertical-align:middle"></span> ${ltr(d.chips)}</small></div>
       <div class="shop-cards">${d.offers
         .map((c, i) => {
           const info = CARD_INFO[c];
@@ -857,22 +890,25 @@ export class Game {
     const L0 = d.level.loads[0];
     const hint =
       L0.type === 'mystery'
-        ? `השוו את השכיחות היחסית מירי הניסיון ל־${ltr('1/2')}. יותר ניסויים — הערכה מדויקת יותר.`
+        ? `השוו את השכיחות היחסית מזריקות הניסיון ל־${ltr('1/2')}. יותר ניסויים — הערכה מדויקת יותר.`
         : L0.type === 'spin' || L0.type === 'bet' || L0.type === 'coin'
           ? `בגלגל הסיכוי לא משתנה אחרי רצף. השוו את הסיכוי לעוגה ל־${ltr('1/2')}.`
-          : `ספרו כמה עוגות נשארו מתוך כמה פגזים, והשוו ל־${ltr('1/2')}.`;
+          : `ספרו כמה עוגות נשארו מתוך כמה מנות, והשוו ל־${ltr('1/2')}.`;
     const why = r.won
       ? `${this.level.rival.name} ${rivalVerb(this.level.rival.model, 'מכוסה', 'מכוסה', 'מכוסים')} בקצפת.`
       : r.passed
         ? 'המזל לא היה איתך, אבל ההחלטות שלך התאימו לסיכויים — וזה מה שקובע.'
-        : r.accuracy >= 0.8 && !r.varied
+        : endless
+          ? 'הקצפת ניצחה הלילה. כל לילה הוא תערובת חדשה — נסו לילה חדש!'
+          : r.accuracy >= 0.8 && !r.varied
           ? 'עדיין לא ראינו אותך בוחר נכון בשני המצבים: כשעוגה סבירה יותר וכשריק סביר יותר. ההחלטות נשמרות, והסיבוב הבא יבדוק את מה שחסר.'
           : r.accuracy >= 0.8
             ? 'ההחלטות שלך התאימו לסיכויים, אבל היו מעט מדי כדי לבדוק. הן נשמרות — עוד סיבוב אחד!'
             : `נסו שוב: ${hint}`;
     const next = endless ? null : LEVELS.find((l) => l.id === id + 1);
     const wrong = d.decisions.filter((x) => !x.correct).slice(-1)[0];
-    const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.pSeen))} ובחרת ${wrong.choice === 'self' ? 'לירות בעצמך' : wrong.choice === 'rival' ? 'לירות ביריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
+    const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.pSeen))} ובחרת ${wrong.choice === 'self' ? 'לכוון לעצמך' : wrong.choice === 'rival' ? 'לזרוק על היריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
+    if (r.passed && id === 17 && !expert) return this.finale(stars);
     this.overlay(
       `<h2>${title}</h2>${stars}<p>${why}</p><p>החלטות לפי הסיכויים: ${ltr(`${r.matchCorrect}/${r.matchDecisions}`)}${d.carry.length ? ` (כולל ניסיונות קודמים: ${ltr(`${r.correct}/${r.total}`)})` : ''}</p>${lesson}
       ${r.passed && !endless && !expert && next && next.booth !== d.level.booth ? `<p class="unlock">🎪 נפתח דוכן חדש: <b>${BOOTHS.find((b) => b.id === next.booth)!.name}</b> — ${BOOTH_SUBJECTS[next.booth].subject}</p>` : ''}
@@ -885,6 +921,21 @@ export class Game {
         'ov-retry': () => (endless ? this.startNight(r.passed ? this.night : 1) : this.startLevel(id, undefined, expert)),
         'ov-select': () => this.showSelect(),
       },
+    );
+  }
+
+  /** The champion's finale: trophy, fireworks, totals and where to go next. */
+  private finale(stars: string) {
+    const total = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
+    for (let i = 0; i < 8; i++) setTimeout(() => this.stage.fireworks(), i * 260);
+    this.domConfetti();
+    setTimeout(() => this.domConfetti(), 900);
+    this.overlay(
+      `<div class="finale"><div class="trophy">🏆</div><h2>אלופי הקרנבל!</h2>${stars}<p>ביג מו מכוסה בקצפת, והגביע שלכם. ספרתם, חישבתם — ועקפתם את המזל.</p>
+      <p>סך הכול: ★ ${ltr(`${total}/51`)}</p>
+      <ul><li>🔥 <b>מצב מומחה</b> נפתח לכל שלב שעברתם: בלי מד ונגד יריבים חכמים יותר — אספו כתרים 👑</li><li>🎡 <b>לילות בקרנבל</b>: תערובות חדשות בכל לילה, כמה לילות ברצף תשרדו?</li></ul></div>
+      <div class="row-btns"><button class="btn gold" id="ov-night">🎡 לילה בקרנבל</button><button class="btn dark" id="ov-select">לשדרת הדוכנים</button></div>`,
+      { 'ov-night': () => this.startNight(1), 'ov-select': () => this.showSelect() },
     );
   }
 
@@ -974,7 +1025,8 @@ export class Game {
   /** ×2 animation speed for players who want less watching between decisions. */
   setFast(on: boolean) {
     this.save.settings.fast = on;
-    this.stage.tweens.speed = on ? 2 : 1;
+    // the base pace is already brisk; the toggle doubles it
+    this.stage.tweens.speed = on ? 2.4 : 1.3;
     writeSave(this.save);
     $('btn-speed').setAttribute('aria-pressed', String(on));
   }
@@ -992,7 +1044,7 @@ export class Game {
     const en = mode !== 'none';
     if (mode === 'test' && d && d.load.type === 'mystery') {
       const L = d.load;
-      a.innerHTML = `<div class="alt-actions"><button class="fire self small" id="t1" ${L.tests.length >= L.maxTests ? 'disabled' : ''}>ירי ניסיון ×${ltr(1)}</button><button class="fire self small" id="t4" ${L.tests.length >= L.maxTests ? 'disabled' : ''}>ירי ניסיון ×${ltr(4)}</button><button class="fire rival small" id="tgo" ${L.tests.length >= L.minTests ? '' : 'disabled'}>לדו־קרב!</button></div>`;
+      a.innerHTML = `<div class="alt-actions"><button class="fire self small" id="t1" ${L.tests.length >= L.maxTests ? 'disabled' : ''}>זריקות ניסיון ×${ltr(1)}</button><button class="fire self small" id="t4" ${L.tests.length >= L.maxTests ? 'disabled' : ''}>זריקות ניסיון ×${ltr(4)}</button><button class="fire rival small" id="tgo" ${L.tests.length >= L.minTests ? '' : 'disabled'}>לדו־קרב!</button></div>`;
       $('t1').onclick = () => this.test(1);
       $('t4').onclick = () => this.test(4);
       $('tgo').onclick = () => {
@@ -1025,7 +1077,7 @@ export class Game {
     const alive = (s: PlayerId) => (this.hp[s] ?? 0) > 0;
     const pieIco = `<span class="ico">${PIE_SVG}</span>`;
     const rivalBtn = (s: PlayerId, label: string, key: string) => `<button class="fire rival ${twins ? 'small' : ''}" data-t="${s}" ${en && alive(s) ? '' : 'disabled'}>${pieIco}<span>${label}</span><kbd>${key}</kbd></button>`;
-    a.innerHTML = `${twins ? rivalBtn('r1', 'ירי בתאום א׳', '1') + rivalBtn('r2', 'ירי בתאום ב׳', '3') : rivalBtn('r1', 'ירי ביריב', '1')}<button class="fire self ${twins ? 'small' : ''}" data-t="self" ${en ? '' : 'disabled'}><span class="ico" style="font-size:1.4em;display:grid;place-items:center">${FACE_YOU}</span><span>ירי בעצמי</span><kbd>2</kbd></button>`;
+    a.innerHTML = `${twins ? rivalBtn('r1', 'זריקה לתאום א׳', '1') + rivalBtn('r2', 'זריקה לתאום ב׳', '3') : rivalBtn('r1', 'זריקה ליריב', '1')}<button class="fire self ${twins ? 'small' : ''}" data-t="self" ${en ? '' : 'disabled'}><span class="ico" style="font-size:1.4em;display:grid;place-items:center">${FACE_YOU}</span><span>זריקה עליי</span><kbd>2</kbd></button>`;
     a.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => (b.onclick = () => this.fire(b.dataset.t as 'self' | PlayerId)));
   }
 
@@ -1034,6 +1086,19 @@ export class Game {
     if (this.animating || !d.testFire(k)) return;
     this.sfx.click();
     this.run(d.drain());
+  }
+
+  /** keep the meter just under the cream-points card (which grows with two twins) */
+  private placeMeter() {
+    const app = $('app').getBoundingClientRect();
+    const card = $('hp-card').getBoundingClientRect();
+    const m = $('meter');
+    if (app.width / app.height < 0.8) {
+      m.style.top = '';
+      return;
+    }
+    m.style.top = `${card.bottom - app.top + 10}px`;
+    m.style.transform = 'none';
   }
 
   private renderHp(changed?: string) {
@@ -1049,6 +1114,7 @@ export class Game {
         return `<div class="hp-row ${r.cls}" aria-label="${r.name}: ${hp} מתוך ${r.max}"><span class="face">${r.face}</span><span class="who">${r.name}</span><span class="pies">${Array.from({ length: r.max }, (_, i) => `<span class="hp-pie ${r.max > 6 ? 'small' : ''} ${i < hp ? '' : 'lost'}">${PIE_SVG}</span>`).join('')}</span>${changed === r.id ? `<span class="delta">${ltr('-1')}</span>` : ''}</div>`;
       })
       .join('');
+    this.placeMeter();
   }
 
   private renderChips() {
@@ -1068,14 +1134,14 @@ export class Game {
     const sub = $('mag-sub');
     const title = $('mag-title');
     if (L.type === 'mag') {
-      title.textContent = 'המחסנית הנוכחית';
+      title.textContent = 'במכונה עכשיו';
       const { pies, duds, unknown } = this.counts;
       const total = pies + duds;
       const yourTurn = d.phase === 'decide' && !this.animating;
       let html = '';
       if (unknown) {
         for (let i = 0; i < total; i++) html += `<span class="slot">${MYSTERY_SVG}</span>`;
-        sub.innerHTML = total ? `${count(pies, 'עוגה אחת', 'עוגות')} מתוך ${ltr(total)} פגזים · כמה ריקים?` : '';
+        sub.innerHTML = total ? `${count(pies, 'עוגה אחת', 'עוגות')} מתוך ${ltr(total)} מנות · כמה ריקים?` : '';
       } else {
         // the order is hidden, so show the counts: pies first, then duds; a peeked next shell is marked
         const next = yourTurn && L.known[0] ? L.shells[0].kind : null;
@@ -1090,24 +1156,24 @@ export class Game {
           if (mark) markedNext = true;
           html += `<span class="slot ${mark ? 'next' : ''}">${DUD_SVG}${mark ? '<span class="tag">הבא</span>' : ''}</span>`;
         }
-        const second = yourTurn && L.known[1] ? `הפגז השני: ${L.shells[1].kind === 'pie' ? 'עוגה' : 'ריק'}` : '';
-        const flav = yourTurn && L.nextFlavor ? `הפגז הבא ב${L.nextFlavor === 'choc' ? 'שוקולד 🍫' : 'וניל 🍦'}` : '';
+        const second = yourTurn && L.known[1] ? `המנה השנייה: ${L.shells[1].kind === 'pie' ? 'עוגה' : 'ריק'}` : '';
+        const flav = yourTurn && L.nextFlavor ? `המנה הבאה ב${L.nextFlavor === 'choc' ? 'שוקולד 🍫' : 'וניל 🍦'}` : '';
         sub.innerHTML = [flav, second].filter(Boolean).join(' · ');
       }
       slots.innerHTML = html;
     } else if (L.type === 'spin' || L.type === 'bet') {
-      title.textContent = L.type === 'bet' ? 'סבב הימורים' : 'סביבון (עם החזרה)';
+      title.textContent = L.type === 'bet' ? 'סבב הימורים' : 'גלגל המזל (עם החזרה)';
       slots.innerHTML = `<span class="slot">${PIE_SVG}</span><span style="align-self:center;font-weight:800;font-size:1.4em">${fr(L.pie.n, L.pie.d)}</span><span class="slot">${DUD_SVG}</span><span style="align-self:center;font-weight:800;font-size:1.4em">${ltr(str(complement(L.pie)))}</span>`;
       sub.innerHTML = L.type === 'spin' ? `${L.spinsLeft === 1 ? 'נשאר' : 'נשארו'} ${count(L.spinsLeft, 'סיבוב אחד', 'סיבובים')} · אחרי רצף הסיכוי לא משתנה` : 'שני סיבובים בלתי תלויים';
     } else if (L.type === 'coin') {
-      title.textContent = 'מטבע ושני גלגלים';
+      title.textContent = L.coin.n * 2 === L.coin.d ? 'מטבע ושני גלגלים' : 'מטבע מוטה ושני גלגלים';
       slots.innerHTML = `<span style="font-weight:700">A: ${fr(L.a.n, L.a.d)}</span>&nbsp;&nbsp;<span style="font-weight:700">B: ${fr(L.b.n, L.b.d)}</span>&nbsp;&nbsp;<span>P(A) = ${ltr(str(L.coin))}</span>`;
-      sub.innerHTML = `${L.spinsLeft === 1 ? 'נשארה' : 'נשארו'} ${count(L.spinsLeft, 'ירייה אחת', 'יריות')}`;
+      sub.innerHTML = `${L.spinsLeft === 1 ? 'נשארה' : 'נשארו'} ${count(L.spinsLeft, 'זריקה אחת', 'זריקות')}`;
     } else if (L.type === 'mystery') {
-      title.textContent = 'התותח המסתורי';
+      title.textContent = 'המכונה המסתורית';
       const pies = L.tests.filter(Boolean).length;
       slots.innerHTML = `<span class="slot">${MYSTERY_SVG}</span>`;
-      sub.innerHTML = d.phase === 'test' ? `ירי ניסיון: ${ltr(L.tests.length)} מתוך ${ltr(L.maxTests)} · עוגות: ${ltr(pies)}` : `שכיחות יחסית מהניסוי: ${fr(pies, Math.max(1, L.tests.length))} · ${L.spinsLeft === 1 ? 'נשארה' : 'נשארו'} ${count(L.spinsLeft, 'ירייה אחת', 'יריות')}`;
+      sub.innerHTML = d.phase === 'test' ? `זריקות ניסיון: ${ltr(L.tests.length)} מתוך ${ltr(L.maxTests)} · עוגות: ${ltr(pies)}` : `שכיחות יחסית מהניסוי: ${fr(pies, Math.max(1, L.tests.length))} · ${L.spinsLeft === 1 ? 'נשארה' : 'נשארו'} ${count(L.spinsLeft, 'זריקה אחת', 'זריקות')}`;
     }
   }
 
@@ -1130,7 +1196,7 @@ export class Game {
       $('meter-fill').style.height = `${p * 100}%`;
       const simple = frac(r.n, Math.max(1, r.d));
       const reduced = simple.d !== r.d && r.d > 1;
-      $('meter-frac').innerHTML = r.d === 0 ? '—' : reduced ? `${r.n}/${r.d}<br>= ${str(simple)}` : `${r.n}/${r.d}`;
+      $('meter-frac').innerHTML = r.d === 0 ? '—' : r.note === 'ידוע' ? `${r.n}<br><small>${r.n ? 'ודאי' : 'בלתי אפשרי'}</small>` : reduced ? `${r.n}/${r.d}<br>= ${str(simple)}` : `${r.n}/${r.d}`;
       $('meter-frac').classList.toggle('long', reduced);
     } else {
       $('meter-fill').style.height = '50%';
@@ -1178,65 +1244,107 @@ export class Game {
     h.innerHTML = d.hand
       .map((c, i) => {
         const info = CARD_INFO[c];
-        return `<button class="card" data-i="${i}" style="--c1:${info.c1};--c2:${info.c2}" title="${info.desc}"><span class="ico">${info.icon}</span><span>${info.name}</span></button>`;
+        return `<button class="card" data-i="${i}" style="--c1:${info.c1};--c2:${info.c2}" title="${info.desc}" ${d.canUse(c) && !this.animating ? '' : 'disabled'}><span class="ico">${info.icon}</span><span>${info.name}</span></button>`;
       })
       .join('');
     h.querySelectorAll<HTMLButtonElement>('.card').forEach((b) => (b.onclick = () => this.useCard(d.hand[Number(b.dataset.i)])));
   }
 
   /** Left panel: tree diagram (Double), two-way table (flavors), area model (coin), test bars (mystery), bet tree. */
+  /** true from the moment you decide until your next turn: the panels may show their bottom line. */
+  private reveal = false;
+
+  /** Left panel: tree diagram (Double), two-way table (flavors), area model (coin), test bars (mystery), bet tree.
+   *  It shows the inputs; the bottom line stays "?" until you decide (or spend a meter use), so you do the math. */
   private renderSide() {
     const d = this.duel;
     const p = $('side-panel');
     if (!d) return p.classList.add('hidden');
     const L = d.load;
-    const meterOn = this.level.meter.kind !== 'off';
+    const inputs = this.level.meter.kind !== 'off';
+    const answer = this.reveal || d.meterVisible();
+    const q = (v: string) => (answer ? `<b>${v}</b>` : '<b class="ask">?</b>');
     if (L.type === 'mag' && L.shells.some((s) => s.flavor)) {
       const t = { choc: { pies: 0, duds: 0 }, van: { pies: 0, duds: 0 } };
       L.shells.forEach((s, i) => {
         if (L.known[i]) return;
         t[s.flavor!][s.kind === 'pie' ? 'pies' : 'duds']++;
       });
-      const lit = d.phase === 'decide' ? L.nextFlavor : undefined;
+      const lit = L.nextFlavor;
       const row = (f: 'choc' | 'van', name: string) => `<tr class="${lit === f ? 'lit' : ''}"><th>${name}</th><td>${ltr(t[f].pies)}</td><td>${ltr(t[f].duds)}</td><td>${ltr(t[f].pies + t[f].duds)}</td></tr>`;
       const tot = { pies: t.choc.pies + t.van.pies, duds: t.choc.duds + t.van.duds };
+      const name = lit === 'choc' ? 'השוקולד' : 'הווניל';
       p.innerHTML = `<h4>טבלה דו־ממדית — מה נשאר</h4><table><tr><th></th><th>עוגה</th><th>ריק</th><th>סה״כ</th></tr>${row('choc', '🍫 שוקולד')}${row('van', '🍦 וניל')}<tr><th>סה״כ</th><td>${ltr(tot.pies)}</td><td>${ltr(tot.duds)}</td><td>${ltr(tot.pies + tot.duds)}</td></tr></table>${
-        lit && meterOn ? `<div class="eq">P(pie | ${lit === 'choc' ? 'choc' : 'van'}) = ${t[lit].pies}/${t[lit].pies + t[lit].duds}</div>` : lit ? '<div class="eq" dir="rtl">הסתברות מותנית: הסתכלו רק על השורה המוארת</div>' : ''
+        lit ? `<div class="eq" dir="rtl">הפנס על ${name}: עוגות בשורה ÷ כל השורה = ${q(fr(t[lit].pies, t[lit].pies + t[lit].duds))}</div>` : '<div class="eq" dir="rtl">הסתברות מותנית: מסתכלים רק על השורה שהפנס מאיר</div>'
       }`;
       p.classList.remove('hidden');
       return;
     }
-    if (L.type === 'mag' && d.hand.includes('double') && L.shells.length >= 2 && d.phase === 'decide') {
+    if (L.type === 'mag' && d.hand.includes('double') && L.shells.length >= 2 && (d.phase === 'decide' || this.reveal)) {
       const pool = L.shells.filter((_, i) => !L.known[i]);
       const n = pool.length;
       const k = pool.filter((s) => s.kind === 'pie').length;
       const dd = n - k;
-      const show = meterOn && !L.known[0] && !L.known[1];
-      p.innerHTML = `<h4>דיאגרמת עץ — שני פגזים</h4>${treeSvg(show ? [`${k}/${n}`, `${dd}/${n}`, `${k - 1}/${n - 1}`, `${dd}/${n - 1}`, `${k}/${n - 1}`, `${dd - 1}/${n - 1}`] : ['?', '?', '?', '?', '?', '?'])}${
-        show ? `<div class="eq">P(≥1 pie) = 1 − ${dd}/${n} · ${Math.max(0, dd - 1)}/${n - 1} = ${str(complement(frac(dd * Math.max(0, dd - 1), n * (n - 1))))}</div>` : '<div class="eq" dir="rtl">כפולה מצליחה אם יש לפחות עוגה אחת</div>'
+      const show = inputs && !L.known[0] && !L.known[1];
+      p.innerHTML = `<h4>דיאגרמת עץ — שתי מנות</h4>${treeSvg(show ? [`${k}/${n}`, `${dd}/${n}`, `${k - 1}/${n - 1}`, `${dd}/${n - 1}`, `${k}/${n - 1}`, `${dd - 1}/${n - 1}`] : ['?', '?', '?', '?', '?', '?'])}${
+        show
+          ? `<div class="eq" dir="rtl">לפחות עוגה אחת = 1 − (שני ריקים) = ${ltr(`1 − ${dd}/${n} · ${Math.max(0, dd - 1)}/${n - 1}`)} = ${q(ltr(str(complement(frac(dd * Math.max(0, dd - 1), n * (n - 1))))))}</div>`
+          : '<div class="eq" dir="rtl">כפולה מצליחה אם יש לפחות עוגה אחת: 1 − (שני ריקים)</div>'
       }`;
       p.classList.remove('hidden');
       return;
     }
     if (L.type === 'coin') {
-      p.innerHTML = `<h4>מודל שטח</h4>${areaSvg(L.coin, L.a, L.b)}${meterOn ? `<div class="eq">P = ${str(L.coin)}·${str(L.a)} + ${str(complement(L.coin))}·${str(L.b)} = ${str(pCoin(L.coin, L.a, L.b))}</div>` : ''}`;
+      p.innerHTML = `<h4>מודל שטח</h4>${areaSvg(L.coin, L.a, L.b)}${
+        inputs ? `<div class="eq" dir="rtl">הסתברות לעוגה = שני החלקים הוורודים:</div><div class="eq">${str(L.coin)}·${str(L.a)} + ${str(complement(L.coin))}·${str(L.b)} = ${q(str(pCoin(L.coin, L.a, L.b)))}</div>` : '<div class="eq" dir="rtl">חברו את שני החלקים הוורודים</div>'
+      }`;
       p.classList.remove('hidden');
       return;
     }
     if (L.type === 'bet') {
-      const q = complement(L.pie);
-      p.innerHTML = `<h4>דיאגרמת עץ — שני סיבובים</h4>${treeSvg([str(L.pie), str(q), str(L.pie), str(q), str(L.pie), str(q)])}<div class="eq" dir="rtl">כפלו לאורך הענף, חברו ענפים</div>`;
+      const qq = complement(L.pie);
+      p.innerHTML = `<h4>דיאגרמת עץ — שני סיבובים</h4>${treeSvg([str(L.pie), str(qq), str(L.pie), str(qq), str(L.pie), str(qq)])}<div class="eq" dir="rtl">כופלים לאורך הענף, מחברים ענפים</div>`;
       p.classList.remove('hidden');
       return;
     }
     if (L.type === 'mystery') {
       const pies = L.tests.filter(Boolean).length;
       const n = L.tests.length;
-      p.innerHTML = `<h4>ירי ניסיון על הבובה</h4>${barsSvg(pies, n - pies, L.maxTests)}<div class="eq">${n ? `${pies}/${n} ≈ ${(pies / n).toFixed(2)}` : '—'}</div><div class="eq" dir="rtl" style="font-weight:500">${n && n < 8 ? 'מעט ניסויים — ההערכה עלולה לטעות' : n >= 16 ? 'הרבה ניסויים — הערכה אמינה יותר' : ''}</div>`;
+      p.innerHTML = `<h4>זריקות ניסיון על הבובה</h4>${barsSvg(pies, n - pies, L.maxTests)}<div class="eq" dir="rtl">שכיחות יחסית: ${n ? `${fr(pies, n)} ≈ ${ltr((pies / n).toFixed(2))}` : '—'}</div><div class="eq" dir="rtl" style="font-weight:500">${n && n < 8 ? 'מעט ניסויים — ההערכה עלולה לטעות' : n >= 16 ? 'הרבה ניסויים — הערכה אמינה יותר' : ''}</div>`;
       p.classList.remove('hidden');
       return;
     }
     p.classList.add('hidden');
+  }
+
+  /** On a phone the side panel starts folded to a tab; tapping toggles it. */
+  private sidePanelFold() {
+    const p = $('side-panel');
+    if (p.dataset.bound) return;
+    p.dataset.bound = '1';
+    p.addEventListener('click', () => p.classList.toggle('open'));
+  }
+
+  /** One sentence about where the probability came from, written at the moment you decided. */
+  private decisionContext(): string {
+    const d = this.duel!;
+    const L = d.load;
+    const r = this.rawP();
+    if (L.type === 'mag') {
+      if (L.known[0]) return `הצצתם: המנה הבאה ${L.shells[0].kind === 'pie' ? 'עוגה — ודאי' : 'ריק — בלתי אפשרי לחטוף עוגה'}`;
+      if (L.nextFlavor) return `הפנס הראה ${L.nextFlavor === 'choc' ? 'שוקולד' : 'וניל'}: בשורה הזו ${count(r.n, 'עוגה אחת', 'עוגות')} מתוך ${ltr(r.d)} — הסתברות מותנית ${fr(r.n, r.d)}`;
+      if (r.n === r.d) return `נשארו רק עוגות: ${fr(r.n, r.d)} = 1, ודאי`;
+      if (r.n === 0) return `לא נשארה אף עוגה: ${fr(0, r.d)} = 0, בלתי אפשרי`;
+      const seen = L.known.some(Boolean) ? ' (בלי המנה שראיתם)' : '';
+      return `${r.n === 1 ? 'נשארה' : 'נשארו'} ${count(r.n, 'עוגה אחת', 'עוגות')} מתוך ${ltr(r.d)} מנות${seen}: הסתברות לעוגה ${fr(r.n, r.d)}`;
+    }
+    if (L.type === 'spin') return `בגלגל ${fr(L.pie.n, L.pie.d)} עוגות, עם החזרה — אותו סיכוי בכל סיבוב, גם אחרי רצף`;
+    if (L.type === 'coin') return `מודל שטח: ${ltr(`${str(L.coin)}·${str(L.a)} + ${str(complement(L.coin))}·${str(L.b)} = ${str(pCoin(L.coin, L.a, L.b))}`)}`;
+    if (L.type === 'mystery') {
+      const n = L.tests.length;
+      return `ההערכה מהניסויים: ${fr(r.n, n)} (שכיחות יחסית)${n < 10 ? ` — רק ${count(n, 'ניסוי אחד', 'ניסויים')}, אז ההערכה יכולה לטעות` : ''}`;
+    }
+    return '';
   }
 
   // ================================================================= small UI helpers
@@ -1274,6 +1382,7 @@ export class Game {
   }
 
   comic(text: string, confetti: boolean) {
+    $('banner').classList.add('hidden');
     const c = $('comic');
     c.textContent = text;
     c.className = `comic ${confetti ? 'confetti' : ''}`;
@@ -1324,7 +1433,7 @@ export class Game {
 
 function betterMove(x: Decision) {
   const best = x.best[0] as Choice;
-  const name = best === 'self' ? 'ירייה בעצמך' : best === 'rival' ? 'ירייה ביריב' : best === 'eject' ? 'פליטה (בדיוק חצי — כדאי לקבל מידע)' : best === 'double' ? 'כפולה' : BET_NAME[best as BetEvent] ?? best;
+  const name = best === 'self' ? 'זריקה על עצמך' : best === 'rival' ? 'זריקה על היריב' : best === 'eject' ? 'פליטה (בדיוק חצי — כדאי לקבל מידע)' : best === 'double' ? 'כפולה' : BET_NAME[best as BetEvent] ?? best;
   return `המהלך הטוב: ${name}.`;
 }
 

@@ -323,6 +323,7 @@ bdi[dir='ltr'] {
   right: calc(var(--u) * 1.6);
   top: 50%;
   transform: translateY(-46%);
+  max-height: calc(100% - var(--u) * 36);
   width: max(78px, calc(var(--u) * 13));
   padding: calc(var(--u) * 1.4) calc(var(--u) * 1);
   border-radius: calc(var(--u) * 2.6);
@@ -702,6 +703,7 @@ bdi[dir='ltr'] {
   }
 }
 .comic {
+  z-index: 6;
   position: absolute;
   left: 30%;
   top: 30%;
@@ -1216,6 +1218,15 @@ kbd {
     width: 52%;
     font-size: 11px;
     padding: 6px;
+    max-height: 30px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .side-panel.open {
+    max-height: 60%;
+  }
+  .side-panel h4::after {
+    content: ' ▾';
   }
   .meter {
     top: calc(var(--u) * 52);
@@ -1494,3 +1505,10 @@ kbd {
 @container (max-aspect-ratio: 4/5) {
   .coach { bottom: calc(var(--u) * 46); font-size: 13px; }
 }
+
+.side-panel .ask { color: var(--pink); font-size: 1.3em; }
+.side-panel .eq b { color: var(--amber); }
+
+.goal-card .new-tag { display: inline-block; margin-top: 6px; padding: 3px 12px; border-radius: 999px; background: #ffe7a8; border: 2px solid var(--amber); font-weight: 700; font-size: max(13px, calc(var(--u) * 2.6)); }
+.finale .trophy { font-size: max(70px, calc(var(--u) * 16)); animation: vsPop 0.7s cubic-bezier(0.2, 1.8, 0.4, 1) both; filter: drop-shadow(0 0 30px #ffc35a); }
+.finale ul { text-align: start; }

@@ -34,6 +34,8 @@ export interface Decision {
   p: Frac;
   /** P(next is a pie) as shown to the player (their estimate on a mystery cannon). Explanations use this. */
   pSeen: Frac;
+  /** made right after your own Peek / Magnifier / Flavor Light resolved the doubt: still a real decision. */
+  informed?: boolean;
   values: Partial<Record<Choice, Frac>>;
   best: Choice[];
   correct: boolean;
@@ -255,7 +257,11 @@ export class Duel {
   private rollOffers(): CardId[] {
     const list = this.level.shop!.offers;
     const out: CardId[] = [];
-    for (let i = 0; i < Math.min(3, list.length); i++) out.push(list[(this.offerCursor + i) % list.length]);
+    // three different cards (as many as the list has)
+    for (let i = 0; i < list.length && out.length < 3; i++) {
+      const c = list[(this.offerCursor + i) % list.length];
+      if (!out.includes(c)) out.push(c);
+    }
     this.offerCursor = (this.offerCursor + 3) % list.length;
     return out;
   }
@@ -330,7 +336,8 @@ export class Duel {
   private record(kind: Decision['kind'], choice: Choice, target?: PlayerId): Decision {
     const o = this.options();
     const correct = o.best.includes(choice);
-    const d: Decision = { level: this.level.id, load: this.loadIndex, kind, choice, target, p: this.pScore(), pSeen: this.pYou(), values: o.values, best: o.best, correct, hinted: this.meterVisible() };
+    const d: Decision = { level: this.level.id, load: this.loadIndex, kind, choice, target, p: this.pScore(), pSeen: this.pYou(), values: o.values, best: o.best, correct, hinted: this.meterVisible(), informed: this.infoUsed || undefined };
+    this.infoUsed = false;
     this.decisions.push(d);
     return d;
   }
@@ -381,6 +388,29 @@ export class Duel {
     this.events.push({ t: 'chips', delta: n, total: this.chips, reason });
   }
 
+  /** Whether a card in hand can be played right now (the HUD greys out the others). */
+  canUse(card: CardId): boolean {
+    if (this.phase !== 'decide' || this.turn !== 'you') return false;
+    const L = this.load;
+    switch (card) {
+      case 'peek':
+        return L.type === 'mag' && L.shells.length > 0 && !L.known[0];
+      case 'magnifier':
+        return L.type === 'mag' && L.shells.length > 1 && !L.known[1];
+      case 'flavor':
+        return L.type === 'mag' && !!L.shells[0]?.flavor && !L.nextFlavor;
+      case 'eject':
+        return this.canEject();
+      case 'spinner':
+        return L.type === 'mag' && L.shells.length > 0;
+      case 'double':
+        return this.shellsLeft() >= 2 && L.type !== 'bet';
+    }
+  }
+
+  /** set when you play an info card; the next decision is then 'informed'. */
+  private infoUsed = false;
+
   useCard(card: CardId, arg?: { index?: number; target?: PlayerId }): boolean {
     if (this.phase !== 'decide' || this.turn !== 'you' || !this.hand.includes(card)) return false;
     const L = this.load;
@@ -389,6 +419,7 @@ export class Duel {
       case 'peek':
         if (L.type !== 'mag' || !L.shells.length || L.known[0]) return false;
         take();
+        this.infoUsed = true;
         L.known[0] = true;
         this.events.push({ t: 'card', card, who: 'you' }, { t: 'reveal', by: 'peek', who: 'you', index: 0, shell: L.shells[0] });
         return true;
@@ -396,6 +427,7 @@ export class Duel {
         const k = arg?.index ?? 1;
         if (L.type !== 'mag' || k < 0 || k >= L.shells.length || L.known[k]) return false;
         take();
+        this.infoUsed = true;
         L.known[k] = true;
         this.events.push({ t: 'card', card, who: 'you' }, { t: 'reveal', by: 'magnifier', who: 'you', index: k, shell: L.shells[k] });
         return true;
@@ -403,6 +435,7 @@ export class Duel {
       case 'flavor':
         if (L.type !== 'mag' || !L.shells.length || !L.shells[0].flavor) return false;
         take();
+        this.infoUsed = true;
         L.nextFlavor = L.shells[0].flavor;
         this.events.push({ t: 'card', card, who: 'you' }, { t: 'reveal', by: 'flavor', who: 'you', index: 0, flavor: L.nextFlavor });
         return true;
@@ -703,7 +736,8 @@ export function evaluate(all: Decision[], won: boolean, over: boolean, current: 
   const correct = decisions.filter((d) => d.correct).length;
   // certain and impossible shots (P = 1 or 0) are free: reading the odds is judged on the uncertain ones
   // so are exact-½ shots where either target is right: they say nothing about reading the odds
-  const uncertain = decisions.filter((d) => d.kind === 'bet' || (d.p.n > 0 && d.p.n < d.p.d && !(d.best.includes('rival') && d.best.includes('self'))));
+  // (a call made certain by your own Peek / Magnifier still counts: using the card well is the skill)
+  const uncertain = decisions.filter((d) => d.kind === 'bet' || d.informed || (d.p.n > 0 && d.p.n < d.p.d && !(d.best.includes('rival') && d.best.includes('self'))));
   const judged = uncertain.length >= 3 ? uncertain : decisions;
   const accuracy = judged.length ? judged.filter((d) => d.correct).length / judged.length : 0;
   // a constant strategy can't count as reading the odds: the match must have asked both questions (a pie-likely and a
