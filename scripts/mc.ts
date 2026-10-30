@@ -1,6 +1,6 @@
 import { LEVELS } from '../src/levels';
 import { monteCarlo, type Strategy } from '../src/core/sim';
-const S: Strategy[] = ['odds', 'alwaysRival', 'alwaysSelf', 'random', 'gambler'];
+const S: Strategy[] = (process.argv[3]?.split(',') as Strategy[]) ?? ['odds', 'alwaysRival', 'alwaysSelf', 'random', 'gambler'];
 const n = Number(process.argv[2] ?? 300);
 console.log('lvl ' + S.map((s) => s.padEnd(22)).join(''));
 for (const L of LEVELS) {

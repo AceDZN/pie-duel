@@ -100,16 +100,22 @@ test('Double: each pie creams the rival; only two duds bring the counter-pie on 
   );
 });
 
-test('an exact call on the probability scale earns chips; a wrong one does not', () => {
-  const d = new Duel(testLevel([script('dud', 'pie', 'dud', 'dud', 'dud')]));
+test('an exact call on the probability scale earns chips only with the meter hidden; a wrong one never does', () => {
+  const d = new Duel(testLevel([script('dud', 'pie', 'dud', 'dud', 'dud')], { meter: { kind: 'off' } }));
   d.call(F(1, 5));
   d.fire('self');
-  const ev = d.drain();
-  assert.equal(eventsOf(ev, 'call')[0].exact, true);
+  const ev = eventsOf(d.drain(), 'call')[0];
+  assert.deepEqual([ev.exact, ev.paid], [true, true]);
   assert.equal(d.chips, 2);
-  const e = new Duel(testLevel([script('dud', 'pie', 'dud', 'dud', 'dud')]));
+  const e = new Duel(testLevel([script('dud', 'pie', 'dud', 'dud', 'dud')], { meter: { kind: 'off' } }));
   e.call(F(1, 4)); // "1 of 4 duds" is the classic slip: it is 1 of 5 shells
   e.fire('self');
   assert.equal(eventsOf(e.drain(), 'call')[0].exact, false);
   assert.equal(e.chips, 0);
+  // copying the visible meter isn't estimating: exact, but no chips
+  const m = new Duel(testLevel([script('dud', 'pie', 'dud', 'dud', 'dud')]));
+  m.call(F(1, 5));
+  m.fire('self');
+  const mv = eventsOf(m.drain(), 'call')[0];
+  assert.deepEqual([mv.exact, mv.paid, m.chips], [true, false, 0]);
 });

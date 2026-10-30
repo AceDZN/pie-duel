@@ -47,34 +47,35 @@ test('a constant strategy never passes by reading the odds (300 seeds, every lev
 });
 
 test('evaluate: the thresholds', () => {
-  // two decisions are not enough
-  assert.equal(evaluate([dec([3, 4], 'rival'), dec([1, 4], 'self')], false, true).oddsRead, false);
-  // three correct, both sides asked and answered → passes without winning
-  let r = evaluate([dec([3, 4], 'rival'), dec([1, 4], 'self'), dec([1, 2], 'self')], false, true);
+  // judged on uncertain, informative calls: certain/impossible shots and exact-½ shots don't count
+  const five = [dec([3, 4], 'rival'), dec([1, 4], 'self'), dec([2, 3], 'rival'), dec([1, 3], 'self'), dec([3, 5], 'rival')];
+  let r = evaluate(five, false, true);
   assert.deepEqual([r.oddsRead, r.passed, r.won, r.stars], [true, true, false, 3]);
+  // four informative decisions are not enough, even with free certain and ½ shots added
+  r = evaluate([...five.slice(0, 4), dec([1, 1], 'rival'), dec([0, 2], 'self'), dec([1, 2], 'self')], false, true);
+  assert.equal(r.oddsRead, false);
   // only one side ever asked (all pie-likely) → no odds pass, however accurate
-  r = evaluate([dec([3, 4], 'rival'), dec([2, 3], 'rival'), dec([4, 5], 'rival'), dec([1, 2], 'self')], false, true);
+  r = evaluate([dec([3, 4], 'rival'), dec([2, 3], 'rival'), dec([4, 5], 'rival'), dec([3, 5], 'rival'), dec([5, 6], 'rival')], false, true);
   assert.equal(r.oddsRead, false);
-  // both asked but the dud-likely question never answered correctly
-  r = evaluate([dec([3, 4], 'rival'), dec([2, 3], 'rival'), dec([4, 5], 'rival'), dec([3, 5], 'rival'), dec([1, 4], 'rival')], false, true);
-  assert.equal(r.accuracy, 0.8);
+  // a near-constant player who only gets the certain dud right doesn't count as reading the dud side
+  r = evaluate([dec([3, 4], 'rival'), dec([2, 3], 'rival'), dec([4, 5], 'rival'), dec([3, 5], 'rival'), dec([1, 4], 'rival'), dec([0, 2], 'self')], false, true);
   assert.equal(r.oddsRead, false);
-  // 80 % with both sides answered → pass with 2 stars; 75 % → no
-  r = evaluate([dec([3, 4], 'rival'), dec([1, 4], 'self'), dec([2, 3], 'rival'), dec([1, 3], 'self'), dec([3, 5], 'self')], false, true);
+  // 80 % with both sides answered → pass with 2 stars; 4 of 6 → no
+  r = evaluate([...five.slice(0, 4), dec([3, 5], 'self')], false, true);
   assert.deepEqual([r.accuracy, r.oddsRead, r.stars], [0.8, true, 2]);
-  r = evaluate([dec([3, 4], 'rival'), dec([1, 4], 'self'), dec([2, 3], 'rival'), dec([3, 5], 'self')], false, true);
-  assert.deepEqual([r.accuracy, r.oddsRead], [0.75, false]);
+  r = evaluate([...five, dec([1, 5], 'rival'), dec([4, 5], 'self')], false, true);
+  assert.deepEqual([+r.accuracy.toFixed(2), r.oddsRead], [0.71, false]);
   // winning always passes, with 1 star when the calls were poor
   r = evaluate([dec([3, 4], 'self'), dec([1, 4], 'rival'), dec([2, 3], 'self')], true, true);
   assert.deepEqual([r.passed, r.stars], [true, 1]);
 });
 
 test('good calls carry into the rematch', () => {
-  const first = [dec([3, 4], 'rival'), dec([1, 2], 'rival')]; // unpassed: only 2 decisions
+  const first = [dec([3, 4], 'rival'), dec([1, 4], 'self'), dec([2, 3], 'rival')]; // unpassed: only 3 decisions
   assert.equal(evaluate(first, false, true).passed, false);
-  const second = [dec([1, 3], 'self')];
+  const second = [dec([1, 3], 'self'), dec([3, 5], 'rival')];
   const r = evaluate([...first, ...second], false, true, second);
-  assert.deepEqual([r.total, r.oddsRead, r.matchDecisions], [3, true, 1]);
+  assert.deepEqual([r.total, r.oddsRead, r.matchDecisions], [5, true, 2]);
   // and in the engine: a rematch Duel built with the carry counts the earlier decisions
   const L = levelById(9);
   for (let seed = 1; seed <= 200; seed++) {
@@ -89,7 +90,7 @@ test(
   'Double is a pie-side answer: using Double when pies are likely and firing at yourself when duds are passes by odds',
   () => {
     const r = evaluate(
-      [dec([3, 5], 'double', ['double']), dec([1, 3], 'self'), dec([1, 4], 'self'), dec([2, 3], 'double', ['double'])],
+      [dec([3, 5], 'double', ['double']), dec([1, 3], 'self'), dec([1, 4], 'self'), dec([2, 3], 'double', ['double']), dec([1, 5], 'self')],
       false,
       true,
     );

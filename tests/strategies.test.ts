@@ -22,24 +22,25 @@ test('odds beats "always at the rival" and "always at yourself" against Grandma 
     const self = mc(id, 'alwaysSelf', 400);
     assert.ok(odds.winRate - rival.winRate >= 0.2, `L${id} odds ${pct(odds.winRate)} vs alwaysRival ${pct(rival.winRate)}`);
     assert.ok(odds.winRate - self.winRate >= 0.2, `L${id} odds ${pct(odds.winRate)} vs alwaysSelf ${pct(self.winRate)}`);
-    assert.ok(odds.passRate >= 0.9, `L${id} odds passes ${pct(odds.passRate)}`);
+    assert.ok(odds.passWithin2 >= 0.95, `L${id} odds passes within two attempts ${pct(odds.passWithin2)}`);
   }
 });
 
-test('constant and random strategies do not reliably pass: ≤ 50 % in one attempt (booth 1), ≤ 35 % after booth 1', () => {
-  const naive: Strategy[] = ['alwaysRival', 'alwaysSelf', 'random'];
+test('constant, near-constant and random strategies do not reliably pass: ≤ 45 % in one attempt (≤ 40 % for pure constants)', () => {
+  // near-constant: they only notice the certain / impossible cases (found by the independent playtester)
+  const naive: Strategy[] = ['alwaysRival', 'alwaysSelf', 'random', 'rivalUnlessNoPies', 'selfUnlessAllPies', 'alternate'];
   for (const L of LEVELS)
     for (const s of naive) {
       const r = mc(L.id, s);
-      const cap = L.booth === 1 ? 0.5 : 0.35;
+      const cap = s === 'alwaysRival' || s === 'alwaysSelf' ? 0.4 : 0.45;
       assert.ok(r.passRate <= cap, `L${L.id} ${s} passes ${pct(r.passRate)} (cap ${pct(cap)})`);
     }
 });
 
-test('reading the odds passes more often than every naive strategy on every level', () => {
+test('reading the odds (within two attempts) passes far more often than every naive strategy in one, on every level', () => {
   for (const L of LEVELS) {
-    const odds = mc(L.id, 'odds').passRate;
-    for (const s of ['alwaysRival', 'alwaysSelf', 'random'] as Strategy[]) {
+    const odds = mc(L.id, 'odds').passWithin2;
+    for (const s of ['alwaysRival', 'alwaysSelf', 'random', 'rivalUnlessNoPies', 'selfUnlessAllPies', 'alternate'] as Strategy[]) {
       const r = mc(L.id, s).passRate;
       assert.ok(odds - r >= 0.4, `L${L.id} odds ${pct(odds)} vs ${s} ${pct(r)}`);
     }
@@ -51,6 +52,6 @@ test("booth 4: the gambler's-fallacy strategy underperforms the odds on Robo-Clo
     const odds = mc(id, 'odds', 400);
     const gambler = mc(id, 'gambler', 400);
     assert.ok(odds.winRate - gambler.winRate >= 0.15, `L${id} win: odds ${pct(odds.winRate)} vs gambler ${pct(gambler.winRate)}`);
-    assert.ok(odds.passRate - gambler.passRate >= 0.25, `L${id} pass: odds ${pct(odds.passRate)} vs gambler ${pct(gambler.passRate)}`);
+    assert.ok(odds.passWithin2 - gambler.passRate >= 0.25, `L${id} pass: odds ${pct(odds.passWithin2)} (two attempts) vs gambler ${pct(gambler.passRate)}`);
   }
 });

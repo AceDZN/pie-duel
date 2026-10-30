@@ -51,12 +51,12 @@ export type DuelEvent =
   | { t: 'reveal'; by: CardId; who: PlayerId; index: number; shell?: Shell; flavor?: Flavor }
   | { t: 'eject'; shell: Shell }
   | { t: 'card'; card: CardId; who: PlayerId }
-  | { t: 'call'; value: Frac; truth: Frac; exact: boolean }
+  | { t: 'call'; value: Frac; truth: Frac; exact: boolean; paid: boolean }
   | { t: 'chips'; delta: number; total: number; reason: string }
   | { t: 'test'; results: boolean[] }
   | { t: 'bet'; event: BetEvent; spins: [boolean, boolean]; happened: boolean }
   | { t: 'thought'; who: PlayerId; key: 'dudDue' | 'pieDue' | 'odds' | 'always' | 'peek' | 'double'; p?: Frac }
-  | { t: 'explain'; key: 'selfOnPies' | 'rivalOnDuds' | 'unlucky' | 'goodCall'; p: Frac; choice: Choice }
+  | { t: 'explain'; key: 'selfOnPies' | 'rivalOnDuds' | 'unlucky' | 'lucky' | 'ejectBetter'; p: Frac; choice: Choice }
   | { t: 'over'; winner: PlayerId | 'none'; reason: 'ko' | 'turns' };
 
 export const CARD_PRICE: Record<CardId, number> = { peek: 2, flavor: 2, eject: 3, magnifier: 3, spinner: 3, double: 4 };
@@ -105,8 +105,13 @@ export class Duel {
     this.meterUses = level.meter.kind === 'limited' ? level.meter.uses : level.meter.kind === 'on' ? Infinity : 0;
     this.rivalPeeks = level.rivalPeeks ?? 0;
     this.rivalDoubles = level.rivalDoubles ?? 0;
+    this.prelude = preludeFor(level, this.carry);
     this.nextLoad(true);
   }
+
+  /** A rematch whose earlier attempts never asked one of the two questions opens with a load that asks it. */
+  private prelude: Load | null = null;
+  private offset = 0;
 
   // ---------- views ----------
 
@@ -140,7 +145,8 @@ export class Duel {
       case 'bet':
         return L.pie;
       case 'mystery':
-        return seat === 'you' ? this.mysteryEstimate() : L.pie;
+        // the wheel is hidden from both sides: everyone reasons from the public test shots
+        return this.mysteryEstimate();
     }
   }
 
@@ -153,7 +159,6 @@ export class Duel {
   /** The probability decisions are scored against: what the player could know. */
   private pScore(): Frac {
     const L = this.load;
-    if (L.type === 'mystery') return L.tests.length >= L.maxTests ? this.mysteryEstimate() : L.pie;
     return this.pYou();
   }
 
@@ -178,8 +183,15 @@ export class Duel {
     this.loadIndex++;
     const defs = this.level.loads;
     const cycleFrom = this.level.cycleFrom ?? 0;
-    const idx = this.loadIndex < defs.length ? this.loadIndex : cycleFrom + ((this.loadIndex - defs.length) % (defs.length - cycleFrom));
-    const def = defs[idx];
+    let def: Load;
+    if (this.prelude) {
+      def = this.prelude;
+      this.prelude = null;
+      this.offset = 1;
+    } else {
+      const li = this.loadIndex - this.offset;
+      def = defs[li < defs.length ? li : cycleFrom + ((li - defs.length) % (defs.length - cycleFrom))];
+    }
     this.rivalKnowsNext = false;
     this.load = this.makeLoad(def);
     this.turn = 'you';
@@ -224,7 +236,7 @@ export class Duel {
         } else {
           shells = [...Array(def.pies).fill(0).map((): Shell => ({ kind: 'pie' })), ...Array(def.duds).fill(0).map((): Shell => ({ kind: 'dud' }))];
         }
-        if (def.order && this.loadIndex < this.level.loads.length && this.seed === this.level.seed) shells = def.order.map((k) => ({ kind: k }));
+        if (def.order && this.loadIndex - this.offset < this.level.loads.length && this.seed === this.level.seed) shells = def.order.map((k) => ({ kind: k }));
         else this.rng.shuffle(shells);
         const table: FlavorTable = { choc: { pies: 0, duds: 0 }, van: { pies: 0, duds: 0 } };
         return { type: 'mag', def, shells, known: shells.map(() => false), fired: [], table };
@@ -345,7 +357,10 @@ export class Duel {
   private explain(d: Decision, shell: Shell) {
     const p = d.pSeen;
     const half = cmp(p, HALF);
-    if (d.choice === 'self' && shell.kind === 'pie' && half > 0) this.events.push({ t: 'explain', key: 'selfOnPies', p, choice: d.choice });
+    const good = (d.choice === 'rival' && shell.kind === 'pie') || (d.choice === 'self' && shell.kind === 'dud');
+    if (!d.correct && d.best.includes('eject')) this.events.push({ t: 'explain', key: 'ejectBetter', p, choice: d.choice });
+    else if (!d.correct && good && half !== 0) this.events.push({ t: 'explain', key: 'lucky', p, choice: d.choice });
+    else if (d.choice === 'self' && shell.kind === 'pie' && half > 0) this.events.push({ t: 'explain', key: 'selfOnPies', p, choice: d.choice });
     else if (d.choice === 'rival' && shell.kind === 'dud' && half < 0) this.events.push({ t: 'explain', key: 'rivalOnDuds', p, choice: d.choice });
     else if (half !== 0 && ((d.choice === 'self' && shell.kind === 'pie' && half < 0) || (d.choice === 'rival' && shell.kind === 'dud' && half > 0)))
       this.events.push({ t: 'explain', key: 'unlucky', p, choice: d.choice });
@@ -354,8 +369,10 @@ export class Duel {
   private resolveCall(truth: Frac) {
     if (this.pendingCall === null) return;
     const exact = eq(this.pendingCall, truth);
-    this.events.push({ t: 'call', value: this.pendingCall, truth, exact });
-    if (exact) this.addChips(2, 'call');
+    // copying the meter isn't estimating: an exact call pays only when the meter is hidden
+    const paid = exact && !this.meterVisible();
+    this.events.push({ t: 'call', value: this.pendingCall, truth, exact, paid });
+    if (paid) this.addChips(2, 'call');
     this.pendingCall = null;
   }
 
@@ -684,19 +701,33 @@ export function evaluate(all: Decision[], won: boolean, over: boolean, current: 
   const decisions = all;
   const total = decisions.length;
   const correct = decisions.filter((d) => d.correct).length;
-  const accuracy = total ? correct / total : 0;
-    // A constant strategy can't count as reading the odds: every move that was ever the only best move must
-    // also appear among your correct decisions (aiming at the rival when pies were likelier, at yourself when duds were).
-    // and the match must have asked both questions (a pie-likely and a dud-likely moment), each answered right at least once
-    const read = (side: 1 | -1) => decisions.some((d) => d.kind !== 'bet' && cmp(d.p, HALF) === side && d.correct);
-    const strictlyBest = new Set(decisions.filter((d) => d.kind === 'bet' && d.best.length === 1).map((d) => d.best[0]));
-    const shown = new Set(decisions.filter((d) => d.correct).map((d) => d.choice));
-    const varied = read(1) && read(-1) && [...strictlyBest].every((c) => shown.has(c));
-    const oddsRead = total >= 3 && accuracy >= 0.8 && varied;
+  // certain and impossible shots (P = 1 or 0) are free: reading the odds is judged on the uncertain ones
+  // so are exact-½ shots where either target is right: they say nothing about reading the odds
+  const uncertain = decisions.filter((d) => d.kind === 'bet' || (d.p.n > 0 && d.p.n < d.p.d && !(d.best.includes('rival') && d.best.includes('self'))));
+  const judged = uncertain.length >= 3 ? uncertain : decisions;
+  const accuracy = judged.length ? judged.filter((d) => d.correct).length / judged.length : 0;
+  // a constant strategy can't count as reading the odds: the match must have asked both questions (a pie-likely and a
+  // dud-likely uncertain moment), and each must have been answered right at least once
+  const read = (side: 1 | -1) => uncertain.some((d) => d.kind !== 'bet' && cmp(d.p, HALF) === side && d.correct);
+  const strictlyBest = new Set(decisions.filter((d) => d.kind === 'bet' && d.best.length === 1).map((d) => d.best[0]));
+  const shown = new Set(decisions.filter((d) => d.correct).map((d) => d.choice));
+  const varied = read(1) && read(-1) && [...strictlyBest].every((c) => shown.has(c));
+  const oddsRead = judged.length >= 5 && accuracy >= 0.8 && varied;
     const passed = won || oddsRead;
     const stars = !passed ? 0 : oddsRead && accuracy >= 0.95 ? 3 : oddsRead ? 2 : 1;
   const matchCorrect = current.filter((d) => d.correct).length;
   return { total, correct, accuracy, won, oddsRead, passed, stars, over, matchDecisions: current.length, matchCorrect };
+}
+
+function preludeFor(level: LevelDef, carry: Decision[]): Load | null {
+  if (!carry.length) return null;
+  const read = (side: 1 | -1) => carry.some((d) => d.kind !== 'bet' && d.p.n > 0 && d.p.n < d.p.d && cmp(d.p, HALF) === side && d.correct);
+  if (read(1) && read(-1)) return null;
+  const wantDud = !read(-1);
+  const first = level.loads.find((l) => l.type !== 'bet') ?? level.loads[0];
+  if (first.type === 'mag' && !first.flavors) return { type: 'mag', pies: wantDud ? 1 : 3, duds: wantDud ? 3 : 1 };
+  if (first.type === 'mag') return { type: 'mag', pies: wantDud ? 1 : 3, duds: wantDud ? 3 : 1 };
+  return { type: 'spin', pie: wantDud ? frac(1, 4) : frac(3, 4), spins: 3 };
 }
 
 export { ONE, ZERO };

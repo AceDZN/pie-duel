@@ -1,9 +1,9 @@
 // Headless players for tests and Monte Carlo strategy comparisons.
-import { HALF, cmp } from './frac';
+import { HALF, cmp, frac } from './frac';
 import { Duel } from './duel';
 import type { LevelDef } from './types';
 
-export type Strategy = 'odds' | 'alwaysRival' | 'alwaysSelf' | 'random' | 'gambler';
+export type Strategy = 'odds' | 'alwaysRival' | 'alwaysSelf' | 'random' | 'gambler' | 'rivalUnlessNoPies' | 'selfUnlessAllPies' | 'alternate';
 
 /** Play one of your moves. Returns false when it's not your move. */
 export function playMove(duel: Duel, strategy: Strategy, coin: () => number): boolean {
@@ -42,6 +42,10 @@ export function playMove(duel: Duel, strategy: Strategy, coin: () => number): bo
         return duel.fire(pick === 'self' ? 'self' : target());
       }
       if (strategy === 'alwaysRival') return duel.fire(target());
+      // almost-constant players: they only notice the impossible / certain cases
+      if (strategy === 'rivalUnlessNoPies') return duel.fire(cmp(duel.pYou(), frac(0)) === 0 ? 'self' : target());
+      if (strategy === 'selfUnlessAllPies') return duel.fire(cmp(duel.pYou(), frac(1)) === 0 ? target() : 'self');
+      if (strategy === 'alternate') return duel.fire(duel.decisions.length % 2 ? 'self' : target());
       if (strategy === 'alwaysSelf') return duel.fire('self');
       if (strategy === 'gambler') {
         const L = duel.load;
