@@ -94,7 +94,7 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 
 ### 1. עוגה אחת, שני ריקים — One pie, two duds
 - **Goal:** עוגה אחת מתוך 3: הסתברות קטנה. ירו בעצמכם — ריק מעיף עוגת בונוס על בובו!
-- **Setup:** 4 v 6 points, meter on, seed 103. Loads: **1 pie 2 duds scripted dud, dud, pie**, then 3/1, 1/3, 2/1, 1/2, 3/1, 1/3 (cycle from #2).
+- **Setup:** 5 v 8 points, meter on, seed 119 (first play only; replays are fresh shuffles). Loads: **1 pie 2 duds scripted dud, dud, pie**, then 3/1, 1/2, 3/1, 1/3, 2/1 (cycle from #2) — the first loads hold 5 pies and 5 duds, so leaning to one side doesn't beat naive Bubu.
 - **Math:** P(pie) = 1/3, P(dud) = 1 − 1/3 = 2/3 → aim at yourself.
 - **Solution (tested shot by shot):** you dare yourself at 1/3 → dud → bonus pie on Bubu; Bubu fires at you → dud → your counter-pie creams Bubu; you face the last shell, P = 1 (ודאי) → splat Bubu. Bubu loses 3 points in the first 3 shots.
 - **Misconception:** "aiming at yourself is always bad / it's 50-50 because there are two outcomes".
@@ -102,7 +102,7 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 
 ### 2. ודאי ובלתי אפשרי — Certain and impossible
 - **Goal:** אין עוגות בתותח? בלתי אפשרי לחטוף. רק עוגות? ודאי שבובו חוטף.
-- **Setup:** 4 v 6, meter on, call-it on, seed 202. Loads: **1/3 scripted dud, pie, dud**; **3/4 scripted pie, dud, pie, pie**; then 1/4, 3/4, 1/3, 2/3 (cycle from #3).
+- **Setup:** 5 v 8, meter on, call-it on, seed 207. Loads: **1/3 scripted dud, pie, dud**; **3/4 scripted pie, dud, pie, pie**; then 1/3, 3/4, 1/4, 2/3 (cycle from #3).
 - **Math:** load 1 — you at 1/3 (self), Bubu takes the pie, you face 1 dud left: P(pie) = 0 (בלתי אפשרי). Load 2 — you at 3/4 (rival), Bubu's dud, you face 2 pies left: P = 1 (ודאי).
 - **Solution:** the ½ rule; both endpoints of the probability scale appear on every attempt (tested). Call-it tokens snap to the current denominator.
 - **Misconception:** treating 0 and 1 as "very unlikely / very likely" instead of impossible / certain.
@@ -110,7 +110,7 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 
 ### 3. המאורע המשלים — The complement
 - **Goal:** רואים רק כמה עוגות. ריק הוא המאורע המשלים: 1 פחות ההסתברות לעוגה.
-- **Setup:** 5 v 7, meter on, call-it, seed 304. Every load shows only "pies of total" (`counter: 'piesOfTotal'`). Loads: **3 of 8**, 5 of 6, 2 of 7, 4 of 5, 1 of 5, 5 of 7.
+- **Setup:** 5 v 8, meter on, call-it, seed 308. Every load shows only "pies of total" (`counter: 'piesOfTotal'`). Loads: **3 of 8**, 5 of 6, 2 of 7, 4 of 5, 1 of 5, 5 of 7.
 - **Math:** P(pie) = 3/8 → P(dud) = 1 − 3/8 = 5/8 > ½ → aim at yourself. Then 5/6 → rival.
 - **Misconception:** forgetting the complement and comparing pies to duds wrongly ("3 is less than 8, so…"), or computing 3/5 (pies to duds) instead of 3/8.
 - **Change:** points 4 v 6 → 5 v 7 and load order so a pie-heavy load comes second (before, 19 % of good players died in the 3-of-8 load without ever meeting a pie-likely shot).
@@ -118,7 +118,7 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 
 ### 4. מבחן: הנקמה של בובו — Transfer: Bubu's rematch
 - **Goal:** בלי מד הסיכויים: ספרו בעצמכם. בדיוק חצי? שתי הבחירות טובות.
-- **Setup:** 7 v 9, **no meter**, call-it, transfer, seed 405. Loads: **2/5, 3/6, 4/7**, 1/5, 5/7, 2/7.
+- **Setup:** 7 v 10, **no meter**, call-it, transfer, seed 417. Loads: **2/5, 3/6, 4/7**, 1/5, 5/7, 2/7.
 - **Math:** 2/5 → self; 3/6 = ½ → either is correct (tested: both scored best); 4/7 → rival.
 - **Change:** 3/6 moved to second and points raised from 4 v 6 so the match actually reaches it (before: 0 % reach; your shots in 5- and 7-shell magazines never land on ½).
 - **MC:** odds w56 p97/100; alwaysRival p28; alwaysSelf p14; random p40. Reach 100/100/85.
@@ -127,16 +127,16 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 
 ### 5. ספירה לאחור — Counting down
 - **Goal:** הוצאה בלי החזרה: אחרי כל ירייה ההסתברות זזה. ספרו מה נשאר בתותח.
-- **Setup:** 8 v 8, meter on, call-it, seed 519. Loads: **3 pies 3 duds**, 1/5, 4/5, 5/7, 2/7.
+- **Setup:** 8 v 8, meter on, call-it, seed 528. Loads: **3 pies 3 duds**, 1/5, 4/5, 5/7, 2/7.
 - **Math:** 3/6 = ½; after a dud 3/5 (Rina fires at you); after two duds **3/4** → fire at Grandma. Dependent events: each shot changes the mix.
-- **First play (tested):** seed 519 opens dud, dud, pie: you at ½, Rina at 3/5, you at 3/4 → aim at Rina → pie.
+- **First play (tested):** seed 528 opens dud, dud, pie: you at ½, Rina at 3/5, you at 3/4 → aim at Rina → pie.
 - **Why 8 v 8:** 3/6 is an even ½ opener, so Rina (second shooter, with the information) is favored in it; with fewer points too many good players lost before meeting a dud-likely question (tested variants: 5 v 5 → 81 % within two attempts).
 - **Misconception:** "the mix is still 3 and 3" — forgetting what has already been fired.
 - **MC:** odds w52 p95/100; alwaysRival p5; alwaysSelf p7; random p22. Reach 100/100/84.
 
 ### 6. הצצה — Peek
 - **Goal:** הצצה מראה את הפגז הבא. ומה ההסתברות לעוגה בפגז שאחריו?
-- **Setup:** 6 v 6, meter on, call-it, seed 606. Hand: Peek, Magnifier. Shop: peek, magnifier, peek; 4 chips. Loads: **2/4 scripted dud, pie, dud, pie**, 4/6, 2/6, 5/6, 1/5 (cycle from #2).
+- **Setup:** 6 v 6, meter on, call-it, seed 608. Hand: Peek, Magnifier. Shop: peek, magnifier, peek; 4 chips. Loads: **2/4 scripted dud, pie, dud, pie**, 1/5, 4/5, 2/7, 5/7 (cycle from #2) — skewed so a player who skips the cards still meets informative questions early.
 - **Math:** at ½ Peek shows the next shell is a dud → P = 0 → dare yourself (bonus pie on Rina). Rina then faces P(pie | first was a dud) = **2/3** and fires at you (her thought bubble shows 2/3; tested). You face 1/2 again → Magnifier on the shell after next settles it.
 - **Misconception:** "after a dud the next one is still ½"; information changes the probability (conditional probability).
 - **MC:** odds w70 p100; alwaysRival p2; alwaysSelf p0. Reach 100/100/43.
@@ -225,7 +225,7 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 
 ### 16. התותח המסתורי — Mystery cannon
 - **Goal:** תערובת לא ידועה: ירו ניסיונות על הבובה. השכיחות היחסית מעריכה את ההסתברות.
-- **Setup:** 5 v 6, no meter, seed 1618. Unknown wheels (4/5, 1/5, 1/4, 3/4), at least 4 and at most 20 test shots at the dummy, then 4 duel spins. Decisions are scored against your 20-shot relative frequency when you took all 20, otherwise against the true wheel.
+- **Setup:** 5 v 7, no meter, seed 1619. Unknown wheels (4/5, 1/5, 1/4, 3/4), at least 4 and at most 20 test shots at the dummy, then 4 duel spins. Both sides reason from the public test shots (the wheel is hidden from Robo too), and decisions are scored against the relative frequency you saw — so 4 tests are allowed but visibly unreliable (more creamings), 20 are steadier.
 - **Math:** on the 4/5 wheel a 4-shot estimate is ≤ ½ with P(X ≤ 2 | n = 4) = 0.18; a 20-shot estimate with P(X ≤ 10 | n = 20) ≈ 0.003 (tested: 4 shots mislead > 10 % of seeds, 20 shots < 2 %).
 - **Misconception:** treating the relative frequency of 4 trials as the exact probability.
 - **MC:** odds (takes all 20 tests) w65 p100; gambler p37; alwaysRival p9; alwaysSelf p22; random p27. Odds vs an odds-playing Robo: 35 % wins. Reach 100/100/55.
