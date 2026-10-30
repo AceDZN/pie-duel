@@ -744,7 +744,7 @@ bdi[dir='ltr'] {
 .toast {
   position: absolute;
   left: 50%;
-  top: calc(var(--u) * 17);
+  top: calc(var(--u) * 30);
   transform: translateX(-50%);
   padding: calc(var(--u) * 1) calc(var(--u) * 3);
   border-radius: 999px;

@@ -623,21 +623,21 @@ export class Stage {
   private buildWheels() {
     // spinner wheels stand on the table, right of the cannon; shown only for spinner/coin rounds
     this.scene.add(this.wheelGroup);
-    this.wheelGroup.position.set(0.55, TABLE_Y, 0.15);
+    this.wheelGroup.position.set(-0.95, TABLE_Y, 0.3);
+    this.wheelGroup.rotation.y = 0.35;
     for (let i = 0; i < 2; i++) {
-      const w = new THREE.Mesh(new THREE.CircleGeometry(0.22, 48), new THREE.MeshStandardMaterial({ map: wheelFace(1, 4), roughness: 0.5 }));
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.03, 0.28, 8), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.8 }));
-      stand.position.y = 0.14;
+      const w = new THREE.Mesh(new THREE.CircleGeometry(0.19, 48), new THREE.MeshStandardMaterial({ map: wheelFace(1, 4), roughness: 0.5 }));
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.03, 0.18, 8), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.8 }));
+      stand.position.y = 0.09;
       const holder = new THREE.Group();
       holder.add(stand);
-      w.position.y = 0.48;
-      w.rotation.y = -0.25;
+      w.position.y = 0.36;
       holder.add(w);
       const pointer = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 3), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-      pointer.position.set(0, 0.73, 0.01);
+      pointer.position.set(0, 0.58, 0.01);
       pointer.rotation.z = Math.PI;
       holder.add(pointer);
-      holder.position.x = i * 0.5;
+      holder.position.x = i * 0.42;
       shadowsOn(holder);
       this.wheelGroup.add(holder);
       this.wheels.push(w);
@@ -647,7 +647,7 @@ export class Stage {
       new THREE.MeshStandardMaterial({ map: neonSign('A', '#ff4fa3'), metalness: 0.5 }),
       new THREE.MeshStandardMaterial({ map: neonSign('B', '#3ee6ff'), metalness: 0.5 }),
     ]);
-    this.coin.position.set(0.3, TABLE_Y + 0.01, 0.55);
+    this.coin.position.set(-0.55, TABLE_Y + 0.01, 0.75);
     this.coin.visible = false;
     this.scene.add(this.coin);
     this.wheelGroup.visible = false;
@@ -847,7 +847,7 @@ export class Stage {
       (this.wheels[1].material as THREE.MeshStandardMaterial).map = face(b, 'B');
       (this.wheels[1].material as THREE.MeshStandardMaterial).needsUpdate = true;
     }
-    this.wheelGroup.position.x = mode === 'coin' ? 0.32 : 0.55;
+    this.wheelGroup.position.x = mode === 'coin' ? -1.05 : -0.95;
     this.dummy.visible = mode === 'mystery';
   }
 
