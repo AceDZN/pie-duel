@@ -30,8 +30,10 @@ export interface Decision {
   kind: 'fire' | 'card' | 'bet';
   choice: Choice;
   target?: PlayerId;
-  /** P(next is a pie) as the player could know it. */
+  /** P(next is a pie) the decision is scored against (the true wheel on an untested mystery cannon). */
   p: Frac;
+  /** P(next is a pie) as shown to the player (their estimate on a mystery cannon). Explanations use this. */
+  pSeen: Frac;
   values: Partial<Record<Choice, Frac>>;
   best: Choice[];
   correct: boolean;
@@ -283,10 +285,14 @@ export class Duel {
     // Ejecting only changes your chances when they are exactly ½: then either reveal tips the next shot off ½.
     if (this.canEject() && eq(p, HALF)) best = ['eject'];
     else {
-      const pool: Choice[] = ['rival', 'self'];
-      if (hasDouble) pool.push('double');
-      const top = maxFrac(...pool.map((c) => values[c]!));
-      best = pool.filter((c) => eq(values[c]!, top));
+      // Double is optional: it joins the best moves when it beats or ties the best single shot, and never makes that shot wrong
+      const top = maxFrac(values.rival!, values.self!);
+      best = (['rival', 'self'] as Choice[]).filter((c) => eq(values[c]!, top));
+      if (hasDouble) {
+        const c = cmp(values.double!, top);
+        if (c > 0) best.unshift('double');
+        else if (c === 0) best.push('double');
+      }
     }
     return { values, best };
   }
@@ -306,7 +312,7 @@ export class Duel {
   private record(kind: Decision['kind'], choice: Choice, target?: PlayerId): Decision {
     const o = this.options();
     const correct = o.best.includes(choice);
-    const d: Decision = { level: this.level.id, load: this.loadIndex, kind, choice, target, p: this.pScore(), values: o.values, best: o.best, correct, hinted: this.meterVisible() };
+    const d: Decision = { level: this.level.id, load: this.loadIndex, kind, choice, target, p: this.pScore(), pSeen: this.pYou(), values: o.values, best: o.best, correct, hinted: this.meterVisible() };
     this.decisions.push(d);
     return d;
   }
@@ -329,11 +335,14 @@ export class Duel {
     return true;
   }
 
+  /** One-line worked explanation after a bad outcome, phrased with what the player could see. */
   private explain(d: Decision, shell: Shell) {
-    if (d.choice === 'self' && shell.kind === 'pie' && cmp(d.p, HALF) > 0) this.events.push({ t: 'explain', key: 'selfOnPies', p: d.p, choice: d.choice });
-    else if (d.choice === 'rival' && shell.kind === 'dud' && cmp(d.p, HALF) < 0) this.events.push({ t: 'explain', key: 'rivalOnDuds', p: d.p, choice: d.choice });
-    else if (d.correct && ((d.choice === 'self' && shell.kind === 'pie') || (d.choice === 'rival' && shell.kind === 'dud')) && !eq(d.p, HALF))
-      this.events.push({ t: 'explain', key: 'unlucky', p: d.p, choice: d.choice });
+    const p = d.pSeen;
+    const half = cmp(p, HALF);
+    if (d.choice === 'self' && shell.kind === 'pie' && half > 0) this.events.push({ t: 'explain', key: 'selfOnPies', p, choice: d.choice });
+    else if (d.choice === 'rival' && shell.kind === 'dud' && half < 0) this.events.push({ t: 'explain', key: 'rivalOnDuds', p, choice: d.choice });
+    else if (half !== 0 && ((d.choice === 'self' && shell.kind === 'pie' && half < 0) || (d.choice === 'rival' && shell.kind === 'dud' && half > 0)))
+      this.events.push({ t: 'explain', key: 'unlucky', p, choice: d.choice });
   }
 
   private resolveCall(truth: Frac) {
@@ -456,7 +465,7 @@ export class Duel {
     const a = this.rng.chance(L.pie.n, L.pie.d);
     const b = this.rng.chance(L.pie.n, L.pie.d);
     const happened = betHappened(e, a, b);
-    this.decisions.push({ level: this.level.id, load: this.loadIndex, kind: 'bet', choice: e, p: L.pie, values, best, correct: best.includes(e), hinted: this.meterVisible(), outcome: happened ? 'won' : 'lost' });
+    this.decisions.push({ level: this.level.id, load: this.loadIndex, kind: 'bet', choice: e, p: L.pie, pSeen: L.pie, values, best, correct: best.includes(e), hinted: this.meterVisible(), outcome: happened ? 'won' : 'lost' });
     this.events.push({ t: 'bet', event: e, spins: [a, b], happened });
     this.hurt(happened ? this.aliveRivals()[0].id : 'you', 'bet');
     if (this.winner === null) this.nextLoad();
@@ -589,9 +598,14 @@ export class Duel {
   }
 
   private nextSeat(from: PlayerId): PlayerId {
-    const order = this.players.filter((p) => p.hp > 0).map((p) => p.id);
-    const i = order.indexOf(from);
-    return order[(i + 1) % order.length];
+    // walk the seats in order from the shooter (who may just have creamed themselves out)
+    const seats = this.players.map((p) => p.id);
+    const i = seats.indexOf(from);
+    for (let k = 1; k <= seats.length; k++) {
+      const id = seats[(i + k) % seats.length];
+      if (this.player(id).hp > 0) return id;
+    }
+    return from;
   }
 
   drain(): DuelEvent[] {
@@ -636,10 +650,11 @@ export function evaluate(all: Decision[], won: boolean, over: boolean, current: 
   const accuracy = total ? correct / total : 0;
     // A constant strategy can't count as reading the odds: every move that was ever the only best move must
     // also appear among your correct decisions (aiming at the rival when pies were likelier, at yourself when duds were).
-    const strictlyBest = new Set(decisions.filter((d) => d.best.length === 1).map((d) => d.best[0]));
+    // and the match must have asked both questions (a pie-likely and a dud-likely moment), each answered right at least once
+    const read = (side: 1 | -1) => decisions.some((d) => d.kind !== 'bet' && cmp(d.p, HALF) === side && d.correct);
+    const strictlyBest = new Set(decisions.filter((d) => d.kind === 'bet' && d.best.length === 1).map((d) => d.best[0]));
     const shown = new Set(decisions.filter((d) => d.correct).map((d) => d.choice));
-    // and the match must have asked both questions (a dud-likely and a pie-likely moment) for the odds path to count
-    const varied = strictlyBest.has('rival') && (strictlyBest.has('self') || strictlyBest.has('double')) && [...strictlyBest].every((c) => shown.has(c));
+    const varied = read(1) && read(-1) && [...strictlyBest].every((c) => shown.has(c));
     const oddsRead = total >= 3 && accuracy >= 0.8 && varied;
     const passed = won || oddsRead;
     const stars = !passed ? 0 : oddsRead && accuracy >= 0.95 ? 3 : oddsRead ? 2 : 1;

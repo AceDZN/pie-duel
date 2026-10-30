@@ -942,7 +942,7 @@ export class Stage {
   }
 
   /** Fire a pie or a confetti ball from the cannon at a seat; resolves on impact. */
-  async shoot(kind: 'pie' | 'dud', seat: Seat | 'dummy', slow: boolean) {
+  async shoot(kind: 'pie' | 'dud', seat: Seat | 'dummy', slow: boolean, speed = 1) {
     const from = new THREE.Vector3();
     this.barrelTip.getWorldPosition(from);
     const to = this.targetPoint(seat);
@@ -954,7 +954,7 @@ export class Stage {
     if (slow && !this.reducedMotion) this.tweens.timeScale = 0.32;
     const dist = from.distanceTo(to);
     const arc = seat === 'you' ? 0.12 : 0.28;
-    await this.tweens.tween(260 + dist * 260, (k) => {
+    await this.tweens.tween((260 + dist * 260) / speed, (k) => {
       proj.position.lerpVectors(from, to, k);
       proj.position.y += Math.sin(k * Math.PI) * arc;
       proj.rotation.x = k * 9;
@@ -1019,8 +1019,9 @@ export class Stage {
   }
 
   pop(seat: Seat | 'dummy') {
-    const at = this.targetPoint(seat);
-    this.confetti.burst(at, seat === 'you' ? 160 : 140, seat === 'you' ? 1.6 : 2.4);
+    // a pop in your face bursts a little way in front of the lens so the pieces don't fill the screen
+    const at = seat === 'you' ? this.camera.position.clone().lerp(this.cannon.position, 0.45) : this.targetPoint(seat);
+    this.confetti.burst(at, seat === 'you' ? 120 : 140, seat === 'you' ? 1.4 : 2.4);
   }
 
   ejectShell(kind: 'pie' | 'dud') {
@@ -1147,6 +1148,47 @@ export class Stage {
       if (ray.ray.intersectsBox(box)) return seat;
     }
     return null;
+  }
+
+  private portraits = new Map<string, string>();
+  /** A small PNG portrait of a rival model (for booth cards), rendered once offscreen. */
+  portrait(model: string, tint: number | null = null): string {
+    const key = model + (tint ?? '');
+    const hit = this.portraits.get(key);
+    if (hit) return hit;
+    const gltf = this.models[model as ModelName] ?? this.models['rival-bubu'];
+    const tall = model === 'rival-mo' ? 1.85 : 1.6;
+    const r = new Rival(gltf, tint ?? (!this.models[model as ModelName] && model !== 'rival-bubu' ? fallbackTint(model) : null), tall);
+    r.update(0.4);
+    const sc = new THREE.Scene();
+    sc.add(new THREE.HemisphereLight(0xffffff, 0x553355, 2.2));
+    const kl = new THREE.DirectionalLight(0xffe2c0, 2.4);
+    kl.position.set(1, 2, 3);
+    sc.add(kl, r.root);
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
+    cam.position.set(0, tall * 0.72, 2.4);
+    cam.lookAt(0, tall * 0.62, 0);
+    const rt = new THREE.WebGLRenderTarget(256, 256, { samples: 4 });
+    rt.texture.colorSpace = THREE.SRGBColorSpace;
+    const prev = this.renderer.getRenderTarget();
+    this.renderer.setRenderTarget(rt);
+    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.clear();
+    this.renderer.render(sc, cam);
+    const buf = new Uint8Array(256 * 256 * 4);
+    this.renderer.readRenderTargetPixels(rt, 0, 0, 256, 256, buf);
+    this.renderer.setRenderTarget(prev);
+    rt.dispose();
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d')!;
+    const img = g.createImageData(256, 256);
+    // flip vertically (GL origin is bottom-left) and convert linear → sRGB is handled by the target
+    for (let y = 0; y < 256; y++) img.data.set(buf.subarray((255 - y) * 1024, (256 - y) * 1024), y * 1024);
+    g.putImageData(img, 0, 0);
+    const url = c.toDataURL('image/png');
+    this.portraits.set(key, url);
+    return url;
   }
 
   describe() {

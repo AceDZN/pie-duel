@@ -97,17 +97,27 @@ export class Game {
     $('hud').classList.add('hidden');
     const s = $('select');
     s.classList.remove('hidden');
-    const stars = (n: number) => '★'.repeat(n) + '<span style="opacity:.25">' + '★'.repeat(3 - n) + '</span>';
-    s.innerHTML = `<h2>שדרת הדוכנים</h2><div class="booths">${BOOTHS.map(
-      (b) => `<div class="booth b${b.id}"><div class="canopy"></div><div class="body"><h3>${b.id === 5 ? 'הגמר: ' : `דוכן ${b.id}: `}${b.name}</h3><div class="rival">נגד ${b.rival}</div>${b.levels
-        .map((id) => {
-          const L = levelById(id);
-          return `<button class="lvl ${L.transfer ? 'transfer' : ''}" data-id="${id}" ${this.unlocked(id) ? '' : 'disabled'}><span><span class="num">${ltr(id)}</span>${L.title}</span><span class="stars">${this.unlocked(id) ? stars(this.save.stars[id] ?? 0) : '🔒'}</span></button>`;
-        })
-        .join('')}</div></div>`,
-    ).join('')}</div><div class="row-btns"><button class="btn dark" id="btn-back">חזרה</button></div>`;
-    s.querySelectorAll<HTMLButtonElement>('.lvl').forEach((b) => (b.onclick = () => this.startLevel(Number(b.dataset.id))));
+    const total = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
+    const next = this.nextLevelId();
+    const token = (id: number) => {
+      const L = levelById(id);
+      const open = this.unlocked(id);
+      const st = this.save.stars[id] ?? 0;
+      return `<button class="token ${id === next ? 'next' : ''} ${L.transfer ? 'transfer' : ''}" data-id="${id}" ${open ? '' : 'disabled'} title="${L.title}" aria-label="שלב ${id}: ${L.title}${open ? `, ${st} כוכבים` : ', נעול'}"><b>${ltr(id)}</b><span class="tstars">${open ? '★'.repeat(st) + '<i>' + '★'.repeat(3 - st) + '</i>' : '🔒'}</span></button>`;
+    };
+    s.innerHTML = `<div class="sel-head"><div class="plaque"><span class="tent"></span><div><div class="booth-name">דו־קרב העוגות</div><div class="level-name">★ ${ltr(`${total}/51`)}</div></div></div><button class="btn dark" id="btn-back">חזרה</button></div>
+      <div class="midway">${BOOTHS.map((b) => {
+        const L = levelById(b.levels[0]);
+        const open = this.unlocked(b.levels[0]);
+        const img = this.stage.portrait(L.rival.model, null);
+        return `<div class="stall b${b.id} ${open ? '' : 'locked'}"><div class="canopy"></div><div class="sign">${b.name}</div><div class="who">${
+          L.rival.seats === 2 ? `<img src="${img}" alt="" class="twin a"/><img src="${this.stage.portrait(L.rival.model, 0xb8d8ff)}" alt="" class="twin b"/>` : `<img src="${img}" alt=""/>`
+        }</div><div class="rival">${b.rival}</div><div class="tokens">${b.levels.map(token).join('')}</div></div>`;
+      }).join('')}</div>
+      <button class="btn pink big" id="btn-go">שחקו! <small>שלב ${ltr(next)}</small></button>`;
+    s.querySelectorAll<HTMLButtonElement>('.token').forEach((b) => (b.onclick = () => this.startLevel(Number(b.dataset.id))));
     $('btn-back').onclick = () => this.showTitle();
+    $('btn-go').onclick = () => this.startLevel(next);
   }
 
   showHow() {
@@ -173,14 +183,18 @@ export class Game {
 
   /** Play a batch of events, then hand control to the player or the rival. */
   private async run(events: DuelEvent[]): Promise<void> {
+    const d = this.duel;
     this.animating = true;
     this.setActions('none');
     try {
-      for (let i = 0; i < events.length; i++) await this.play(events[i], events, i);
+      for (let i = 0; i < events.length; i++) {
+        await this.play(events[i], events, i);
+        // a restart or menu jump replaced the duel mid-show: drop the rest of the old show
+        if (this.duel !== d) return;
+      }
     } finally {
-      this.animating = false;
+      if (this.duel === d) this.animating = false;
     }
-    const d = this.duel;
     if (!d || this.ui === 'result') return;
     if (d.phase === 'over') return this.finish();
     if (d.phase === 'shop') return this.openShop();
@@ -264,7 +278,6 @@ export class Game {
   private async showLoad(load: Duel['load']) {
     const st = this.stage;
     $('thought').classList.add('hidden');
-    st.clearCream();
     this.clearCall();
     if (load.type === 'mag') {
       const c = { pies: 0, duds: 0 };
@@ -380,6 +393,7 @@ export class Game {
 
   private async showHit(e: Extract<DuelEvent, { t: 'hit' }>) {
     const st = this.stage;
+    const duel = this.duel;
     const who = e.who as Seat;
     if (e.cause === 'counter') {
       // the side that just took a confetti dud throws a counter-pie at the shooter
@@ -406,6 +420,7 @@ export class Game {
       await st.lob(from, who, 700);
       this.splat(who);
     }
+    if (this.duel !== duel) return;
     this.hp[e.who] = e.hp;
     this.renderHp(e.who);
     if (e.who !== 'you' && e.hp === 0) st.anim(who, 'defeat');
@@ -479,10 +494,9 @@ export class Game {
     const st = this.stage;
     st.frame('dummy', 400);
     await st.aim('dummy', 350);
+    // test fire is quick: a rapid volley at the dummy, one bar-chart tick per shot
     for (const r of results) {
-      this.sfx.spin(300);
-      await st.spinWheel(0, r, frac(1, 2));
-      await st.shoot(r ? 'pie' : 'dud', 'dummy', false);
+      await st.shoot(r ? 'pie' : 'dud', 'dummy', false, 3);
       if (r) {
         st.cream.burst(st.dummy.position.clone().setY(1.1), st.dummy.position.clone().setY(0).normalize(), 30);
         this.sfx.splat();
@@ -491,6 +505,7 @@ export class Game {
         this.sfx.pop();
       }
       this.renderSide();
+      this.renderMag();
     }
     st.frame('home', 400);
   }
@@ -583,7 +598,7 @@ export class Game {
   private logDecisions(from: number) {
     const d = this.duel!;
     for (const x of d.decisions.slice(from)) {
-      logEvent({ t: Date.now(), level: d.level.id, kind: x.kind, choice: x.choice, p: str(x.p), correct: x.correct, hinted: x.hinted, attempt: this.attempt, firstTry: this.attempt === 1 && !(this.save.carry[d.level.id]?.length) });
+      logEvent({ t: Date.now(), level: d.level.id, kind: x.kind, choice: x.choice, p: str(x.pSeen), correct: x.correct, hinted: x.hinted, attempt: this.attempt, firstTry: this.attempt === 1 && !(this.save.carry[d.level.id]?.length) });
     }
   }
 
@@ -660,12 +675,12 @@ export class Game {
       ? `${this.level.rival.name} מכוסה בקצפת.`
       : r.passed
         ? 'המזל לא היה איתך, אבל ההחלטות שלך התאימו לסיכויים — וזה מה שקובע.'
-        : r.accuracy >= 0.8 && r.total < 3
-          ? 'המשחק נגמר מהר מדי כדי לבדוק את ההחלטות. נסו שוב — ההחלטות נשמרות.'
+        : r.accuracy >= 0.8
+          ? 'ההחלטות שלך התאימו לסיכויים, אבל המשחק נגמר לפני שנשאלו שני סוגי השאלות (עוגה סבירה וריק סביר). ההחלטות נשמרות — עוד סיבוב אחד!'
           : 'נסו שוב: ספרו כמה עוגות נשארו מתוך כמה פגזים, והשוו ל־' + ltr('1/2') + '.';
     const next = LEVELS.find((l) => l.id === id + 1);
     const wrong = d.decisions.filter((x) => !x.correct).slice(-1)[0];
-    const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.p))} ובחרת ${wrong.choice === 'self' ? 'לירות בעצמך' : wrong.choice === 'rival' ? 'לירות ביריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
+    const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.pSeen))} ובחרת ${wrong.choice === 'self' ? 'לירות בעצמך' : wrong.choice === 'rival' ? 'לירות ביריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
     this.overlay(
       `<h2>${title}</h2>${stars}<p>${why}</p><p>החלטות לפי הסיכויים: ${ltr(`${r.matchCorrect}/${r.matchDecisions}`)}${d.carry.length ? ` (כולל ניסיונות קודמים: ${ltr(`${r.correct}/${r.total}`)})` : ''}</p>${lesson}
       <div class="row-btns">${r.passed && next ? `<button class="btn gold" id="ov-next">לשלב הבא ›</button>` : ''}<button class="btn ${r.passed ? 'dark' : 'pink'}" id="ov-retry">שוב</button><button class="btn dark" id="ov-select">בחירת דוכן</button></div>`,
@@ -1068,10 +1083,11 @@ export class Game {
       pNextPie: yourMove && raw ? `${raw.n}/${raw.d}` : null,
       meterVisible: d.meterVisible(),
       options: yourMove ? Object.fromEntries(Object.entries(d.options().values).map(([k, v]) => [k, str(v!)])) : null,
+      best: yourMove ? d.options().best : null,
       chips: d.chips,
       hand: d.hand,
       call: this.callValue ? `${this.callValue.n}/${this.callValue.d}` : null,
-      decisions: d.decisions.map((x) => `${x.choice}@${str(x.p)}:${x.correct ? 'ok' : 'x'}`),
+      decisions: d.decisions.map((x) => `${x.choice}@${str(x.pSeen)}:${x.correct ? 'ok' : 'x'}`),
       lastOutcome: this.lastOutcome,
       lastExplain: this.lastExplain,
       result: d.phase === 'over' ? { winner: d.winner, ...d.result() } : null,

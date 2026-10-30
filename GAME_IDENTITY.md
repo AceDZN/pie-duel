@@ -3,6 +3,13 @@
 ## One line
 A midnight neon carnival booth. You and a quirky rival sit at a small round table with the **Pie-o-Matic** between you, a brass-and-glass cream-pie cannon loaded with a known mix of pies and confetti duds in a hidden order. Fire at the rival or at yourself. Knowing the odds is how you win.
 
+## Table rules (as built)
+- The Pie-o-Matic is loaded with a known mix of cream pies and confetti duds (shown as icons), shuffled into a hidden order.
+- **Every shot is a call, and the turn always passes.** Aim at the rival: a pie creams them; a confetti dud lets them smack you with a counter-pie. Aim at yourself (a dare): a dud pops confetti and the crowd's dare-bonus pie creams the rival; a pie creams you.
+- So: aim at the rival when P(pie) > ½, at yourself when P(dud) > ½, either at exactly ½.
+- Why not Buckshot's "dud on yourself = go again"? An exact DP over every magazine state showed that under those rules *always firing at the rival* is optimal everywhere, so the curriculum rule would have been a losing strategy. Under the rules above the probability rule is exactly optimal (the shell consumed and the next turn don't depend on your target; only the ±1 does).
+- Pass a level by winning **or** by reading the odds (≥ 80 % solver-correct calls, both kinds of question asked and answered right; good calls carry into the rematch). Stars measure decisions, not luck.
+
 ## Feel
 - Slapstick, kid-friendly: cream pies and confetti. Never a gun, no weapons, no gore. The Pie-o-Matic is a chunky carnival contraption (brass barrel shaped like a trumpet bell, glass hopper on top where you see the shell *count* but not the order, bulb counter lights, a big red lever).
 - Tension in the pause before the lever; payoff in a slow-motion SPLAT on a face, or a confetti POP.
