@@ -4,6 +4,7 @@ import { cmp, complement, eq, frac, mul, str, sub, type Frac, HALF } from './cor
 import { pBet, pCoin } from './core/prob';
 import type { BetEvent, CardId, LevelDef, PlayerId } from './core/types';
 import { BOOTHS, LEVELS, levelById } from './levels';
+import { generateNight } from './core/endless';
 import type { Stage, Seat } from './scene';
 import type { Sfx } from './audio';
 import { loadSave, logEvent, writeSave, type Save } from './save';
@@ -65,7 +66,9 @@ export class Game {
       <div class="row-btns">
         <button class="btn dark" id="btn-levels">בחירת דוכן</button>
         <button class="btn dark" id="btn-how">איך משחקים?</button>
+        ${this.save.passed[4] ? `<button class="btn cyan" id="btn-night">🎡 לילה בקרנבל</button>` : ''}
       </div>
+      ${this.save.passed[4] ? `<div class="keys">שיא לילות ברצף: ${ltr(this.save.nightBest ?? 0)}</div>` : ''}
       <div class="toggles">
         <label><input type="checkbox" id="opt-sound" ${this.save.settings.muted ? '' : 'checked'} /> צלילים</label>
         <label><input type="checkbox" id="opt-reduced" ${this.save.settings.reduced ? 'checked' : ''} /> פחות תנועה</label>
@@ -74,6 +77,8 @@ export class Game {
     $('btn-play').onclick = () => this.startLevel(next);
     $('btn-levels').onclick = () => this.showSelect();
     $('btn-how').onclick = () => this.showHow();
+    const night = document.getElementById('btn-night');
+    if (night) night.onclick = () => this.startNight(1);
     ($('opt-sound') as HTMLInputElement).onchange = (e) => this.setMuted(!(e.target as HTMLInputElement).checked);
     ($('opt-reduced') as HTMLInputElement).onchange = (e) => this.applyReduced((e.target as HTMLInputElement).checked);
     this.stage.setLevel('rival-bubu', 1, 'booth');
@@ -140,9 +145,18 @@ export class Game {
 
   // ================================================================= level flow
 
-  startLevel(id: number) {
+  private night = 0;
+
+  /** Endless carnival night: a generated, solver-checked match. */
+  startNight(n: number) {
+    this.night = n;
+    const g = generateNight(n, (Date.now() & 0xffff) * 31 + n);
+    this.startLevel(g.def.id, g.def);
+  }
+
+  startLevel(id: number, def?: LevelDef) {
     this.sfx.unlock();
-    this.level = levelById(id);
+    this.level = def ?? levelById(id);
     this.attempt = (this.attempt && this.duel?.level.id === id ? this.attempt : 0) + 1;
     const seed = this.attempt === 1 ? this.level.seed : this.level.seed + 7919 * this.attempt + this.seedBump++;
     this.duel = new Duel(this.level, seed, this.save.carry[id] ?? []);
@@ -159,8 +173,8 @@ export class Game {
     this.lastOutcome = '';
     this.lastExplain = '';
     const booth = BOOTHS.find((b) => b.id === this.level.booth)!;
-    $('booth-name').textContent = booth.name;
-    $('level-name').innerHTML = `שלב ${ltr(this.level.id)} · ${this.level.title}`;
+    $('booth-name').textContent = this.level.id >= 100 ? 'לילה בקרנבל' : booth.name;
+    $('level-name').innerHTML = this.level.id >= 100 ? this.level.title : `שלב ${ltr(this.level.id)} · ${this.level.title}`;
     this.renderHp();
     this.renderHand();
     this.renderChips();
@@ -654,7 +668,10 @@ export class Game {
     this.ui = 'result';
     this.setActions('none');
     const id = d.level.id;
-    if (r.passed) {
+    const endless = id >= 100;
+    if (endless) {
+      if (r.passed) this.save.nightBest = Math.max(this.save.nightBest ?? 0, this.night);
+    } else if (r.passed) {
       this.save.passed[id] = true;
       this.save.stars[id] = Math.max(this.save.stars[id] ?? 0, r.stars);
       delete this.save.carry[id];
@@ -679,15 +696,16 @@ export class Game {
         : r.accuracy >= 0.8
           ? 'ההחלטות שלך התאימו לסיכויים, אבל המשחק נגמר לפני שנשאלו שני סוגי השאלות (עוגה סבירה וריק סביר). ההחלטות נשמרות — עוד סיבוב אחד!'
           : 'נסו שוב: ספרו כמה עוגות נשארו מתוך כמה פגזים, והשוו ל־' + ltr('1/2') + '.';
-    const next = LEVELS.find((l) => l.id === id + 1);
+    const next = endless ? null : LEVELS.find((l) => l.id === id + 1);
     const wrong = d.decisions.filter((x) => !x.correct).slice(-1)[0];
     const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.pSeen))} ובחרת ${wrong.choice === 'self' ? 'לירות בעצמך' : wrong.choice === 'rival' ? 'לירות ביריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
     this.overlay(
       `<h2>${title}</h2>${stars}<p>${why}</p><p>החלטות לפי הסיכויים: ${ltr(`${r.matchCorrect}/${r.matchDecisions}`)}${d.carry.length ? ` (כולל ניסיונות קודמים: ${ltr(`${r.correct}/${r.total}`)})` : ''}</p>${lesson}
-      <div class="row-btns">${r.passed && next ? `<button class="btn gold" id="ov-next">לשלב הבא ›</button>` : ''}<button class="btn ${r.passed ? 'dark' : 'pink'}" id="ov-retry">שוב</button><button class="btn dark" id="ov-select">בחירת דוכן</button></div>`,
+      <div class="row-btns">${r.passed && next ? `<button class="btn gold" id="ov-next">לשלב הבא ›</button>` : ''}${endless && r.passed ? `<button class="btn gold" id="ov-night">הלילה הבא ›</button>` : ''}<button class="btn ${r.passed ? 'dark' : 'pink'}" id="ov-retry">${endless && !r.passed ? 'לילה חדש' : 'שוב'}</button><button class="btn dark" id="ov-select">בחירת דוכן</button></div>`,
       {
         ...(r.passed && next ? { 'ov-next': () => this.startLevel(next.id) } : {}),
-        'ov-retry': () => this.startLevel(id),
+        ...(endless && r.passed ? { 'ov-night': () => this.startNight(this.night + 1) } : {}),
+        'ov-retry': () => (endless ? this.startNight(r.passed ? this.night : 1) : this.startLevel(id)),
         'ov-select': () => this.showSelect(),
       },
     );

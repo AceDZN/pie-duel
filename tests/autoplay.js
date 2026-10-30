@@ -9,7 +9,8 @@ const tick = () => new Promise((r) => { const c = new MessageChannel(); c.port1.
 
 async function autoplayLevel(id, { strategy = 'odds', maxSteps = 260, stepMs = 700 } = {}) {
   const g = window.__game;
-  g.startLevel(id);
+  if (id >= 100) g.startNight(id - 100);
+  else g.startLevel(id);
   q('#goal-go').click();
   const log = [];
   let lastKey = '';

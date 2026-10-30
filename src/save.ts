@@ -10,6 +10,8 @@ export interface Save {
   /** decisions from unpassed attempts, carried into the next attempt (fairness rule). */
   carry: Record<number, Decision[]>;
   settings: { muted: boolean; reduced: boolean };
+  /** longest run of carnival nights passed. */
+  nightBest?: number;
 }
 
 export function loadSave(): Save {
