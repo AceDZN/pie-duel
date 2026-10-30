@@ -15,6 +15,12 @@
 - Independent playtest (separate agent, ~110 matches): 1 blocker (mystery wheel leaked through Robo's bubble) and several bypasses / fairness gaps found; all fixed and re-verified (details in `PLAYTEST.md`). Odds reading now needs 4 informative calls, both questions answered; near-constant strategies added to the Monte Carlo tests; replays are fresh shuffles; call-it pays only without the meter; ×2 speed toggle; Big Mo plays a Double card.
 - 66 tests pass. Headless UI: constant strategies fail all 17 first plays; odds autoplay passes 15/17 first plays and the other two on the rematch.
 
+## 2026-10-31 — AAA polish pass
+
+- Per-booth art direction (`src/themes.ts`): palettes, tablecloths (striped or casino felt), lights, signs, chalk boards, signature props (pie stand; velvet curtains + card lamp + cards; balloons, blocks and a chalk tree diagram; a giant spinner and neon rings; rooftop searchlights and trophy). Background stalls (Tripo booth model), swaying crowd, dust motes, rim spotlight on the rival, cannon recoil and smoke, color grade (vignette, grain).
+- Booth subject cards, versus intro with camera swoop, tutorial coach bubbles, animated result screen with unlock notes, expert mode with crowns (solver-tested), carnival-night button on the midway, per-booth procedural music, hit-stop.
+- Big Mo has a sequinned finish and a champion's crown (still the Bubu rig).
+
 ## Open
 
 - Vercel deploy not done (not requested).

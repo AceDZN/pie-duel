@@ -35,13 +35,16 @@ npm run capture  # gameplay screenshots at mockup size into docs/captures/
 | Call it (optional bet on P) | tap the probability scale | — |
 | Show the odds meter (limited levels) | "הצגת סיכוי" | `H` |
 | Use a trick card | card in your hand (bottom left) | — |
-| Pause / sound | top-left buttons | `P` / `Esc`, `M` |
+| Pause / sound / ×2 speed | top-left buttons | `P` / `Esc`, `M`, `F` |
 
 Settings on the title screen: sound, reduced motion. Progress (stars, unlocks) is saved in `localStorage`.
 
 ## What's in it
 
-- 17 authored levels in 5 booths (Chef Bubu, Grandma Rina, the Twins, Robo-Clown, Big Mo). See `LEVELS.md` and `CURRICULUM.md`.
+- 17 authored levels in 5 booths, each booth a new subject and a new look: the bakery (probability, scale, complement · grade 8), Grandma Rina's card parlor (without replacement, dependent events, conditional probability · grade 9), the Twins' toy stall (tree diagrams, two-way tables, area model · grade 9), Robo-Clown's spinner carnival (independent repeated trials, relative frequency · grades 8–9), and the rooftop final vs Big Mo. Each booth opens with a subject card; each match with a versus banner. See `LEVELS.md` and `CURRICULUM.md`.
+- Progression and replay: stars per level (decision quality), any passed level can be replayed from the midway, **expert mode** for every passed level (no meter, smarter rival, crowns), and endless **carnival nights** (generated mixes, each checked by the solver before it's served).
+- Booth 1 coaches the first decisions (what the fraction means, which button fits) without forcing them.
+- A procedural carnival waltz per booth (music toggle on the title screen), synthesized sound effects, hit-stop, slow motion on your own splats.
 - Pure math core in `src/core/` (exact fractions, probability helpers, the duel state machine, rival AI, scoring and the fairness rule) with no Three.js imports; tests in `tests/`.
 - Three.js scene in `src/scene.ts`: booth, Pie-o-Matic, rigged Tripo rivals (`THREE.AnimationMixer`: idle, laugh, hit, cheer, defeat), slow-motion shots, cream and confetti particles, bloom. Models and their sources are listed in `ASSETS.md`.
 - HUD in `index.html` + `src/game.ts` + `src/style.css`, Hebrew RTL with fractions in LTR isolates, laid out after the gameplay mockups in `docs/visual-targets/`.
