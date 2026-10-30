@@ -25,15 +25,39 @@ export function stripes(a: string, b: string, n = 16) {
   return tex(c, true);
 }
 
-/** Round tabletop: radial red/cream stripes with little stars, like the mockups. */
-export function tableTop() {
+/** Round tabletop: radial stripes with little stars (or casino felt), like the mockups. */
+export function tableTop(cloth: { kind: 'rays'; a: string; b: string; rim: string } | { kind: 'felt'; color: string; rim: string } = { kind: 'rays', a: '#d7313f', b: '#f6e3c6', rim: '#7b1a2a' }) {
   const [c, g] = canvas(1024, 1024);
+  if (cloth.kind === 'felt') {
+    const r = g.createRadialGradient(512, 512, 60, 512, 512, 520);
+    r.addColorStop(0, cloth.color);
+    r.addColorStop(1, '#0c2a1c');
+    g.fillStyle = r;
+    g.fillRect(0, 0, 1024, 1024);
+    for (let i = 0; i < 9000; i++) {
+      g.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`;
+      g.fillRect(Math.random() * 1024, Math.random() * 1024, 2, 2);
+    }
+    g.strokeStyle = '#e8d08a';
+    g.lineWidth = 6;
+    g.setLineDash([18, 14]);
+    g.beginPath();
+    g.arc(512, 512, 380, 0, Math.PI * 2);
+    g.stroke();
+    g.setLineDash([]);
+    g.lineWidth = 34;
+    g.strokeStyle = cloth.rim;
+    g.beginPath();
+    g.arc(512, 512, 498, 0, Math.PI * 2);
+    g.stroke();
+    return tex(c);
+  }
   const n = 24;
   for (let i = 0; i < n; i++) {
     g.beginPath();
     g.moveTo(512, 512);
     g.arc(512, 512, 520, (i / n) * Math.PI * 2, ((i + 1) / n) * Math.PI * 2);
-    g.fillStyle = i % 2 ? '#f6e3c6' : '#d7313f';
+    g.fillStyle = i % 2 ? cloth.b : cloth.a;
     g.fill();
   }
   g.fillStyle = '#ffffff55';
@@ -43,7 +67,7 @@ export function tableTop() {
     star(g, 512 + Math.cos(a) * r, 512 + Math.sin(a) * r, 10 + Math.random() * 10);
   }
   g.lineWidth = 26;
-  g.strokeStyle = '#7b1a2a';
+  g.strokeStyle = cloth.rim;
   g.beginPath();
   g.arc(512, 512, 498, 0, Math.PI * 2);
   g.stroke();
@@ -97,12 +121,12 @@ export function neonSign(text: string, color = '#ff4fa3') {
 }
 
 /** Far backdrop: night sky, tents, crowd silhouettes and a glow line. */
-export function backdrop() {
+export function backdrop(colors: [string, string, string] = ['#120828', '#3a1660', '#7a2a6e']) {
   const [c, g] = canvas(2048, 512);
   const sky = g.createLinearGradient(0, 0, 0, 512);
-  sky.addColorStop(0, '#120828');
-  sky.addColorStop(0.6, '#3a1660');
-  sky.addColorStop(1, '#7a2a6e');
+  sky.addColorStop(0, colors[0]);
+  sky.addColorStop(0.6, colors[1]);
+  sky.addColorStop(1, colors[2]);
   g.fillStyle = sky;
   g.fillRect(0, 0, 2048, 512);
   g.fillStyle = '#ffffff';
@@ -176,5 +200,54 @@ export function wheelFace(pieSectors: number, total: number, labelA?: string) {
     g.font = '900 54px Rubik, sans-serif';
     g.fillText(labelA, 256, 258);
   }
+  return tex(c);
+}
+
+/** A playing card face for the parlor table. */
+export function cardFace(rank: string, suit: string, red: boolean) {
+  const [c, g] = canvas(128, 180);
+  g.fillStyle = '#fbf6ea';
+  g.fillRect(0, 0, 128, 180);
+  g.strokeStyle = '#c8b890';
+  g.lineWidth = 4;
+  g.strokeRect(2, 2, 124, 176);
+  g.fillStyle = red ? '#d0213a' : '#1a1a2a';
+  g.font = '700 40px sans-serif';
+  g.fillText(rank, 12, 44);
+  g.font = '64px sans-serif';
+  g.textAlign = 'center';
+  g.fillText(suit, 64, 120);
+  return tex(c);
+}
+
+/** A chalk board with a two-stage tree diagram (toy booth decoration). */
+export function treeBoard() {
+  const [c, g] = canvas(512, 384);
+  g.fillStyle = '#23302a';
+  g.fillRect(0, 0, 512, 384);
+  g.strokeStyle = '#8a5a2b';
+  g.lineWidth = 24;
+  g.strokeRect(0, 0, 512, 384);
+  g.strokeStyle = '#f2efe6';
+  g.lineWidth = 5;
+  const L = (a: number[], b: number[]) => {
+    g.beginPath();
+    g.moveTo(a[0], a[1]);
+    g.lineTo(b[0], b[1]);
+    g.stroke();
+  };
+  L([60, 192], [220, 100]);
+  L([60, 192], [220, 284]);
+  for (const y of [100, 284]) {
+    L([250, y], [430, y - 55]);
+    L([250, y], [430, y + 55]);
+  }
+  g.fillStyle = '#f2efe6';
+  g.font = '700 30px sans-serif';
+  g.fillText('3/5', 110, 130);
+  g.fillText('2/5', 110, 270);
+  g.fillText('2/4', 320, 62);
+  g.font = '40px sans-serif';
+  for (const [x, y, e] of [[230, 112, '🥧'], [230, 296, '🎉'], [440, 60, '🥧'], [440, 170, '🎉'], [440, 244, '🥧'], [440, 352, '🎉']] as [number, number, string][]) g.fillText(e, x, y);
   return tex(c);
 }

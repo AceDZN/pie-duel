@@ -4,7 +4,7 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 // Big Mo has no model of his own yet (he is a recoloured Bubu), so 'rival-mo' is a name the stage asks for but isn't fetched
-export const MODEL_FILES = ['rival-bubu', 'rival-rina', 'rival-twin', 'rival-robo', 'pie-o-matic', 'cream-pie', 'prize-shelf'] as const;
+export const MODEL_FILES = ['rival-bubu', 'rival-rina', 'rival-twin', 'rival-robo', 'pie-o-matic', 'cream-pie', 'prize-shelf', 'booth-stall', 'spinner-wheel'] as const;
 export type ModelName = (typeof MODEL_FILES)[number] | 'rival-mo';
 export type Models = Partial<Record<ModelName, GLTF>>;
 

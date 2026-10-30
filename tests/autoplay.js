@@ -7,10 +7,15 @@ const q = (sel) => document.querySelector(sel);
 // yield a real task so other scripts (and the test driver) can run; MessageChannel isn't throttled like setTimeout
 const tick = () => new Promise((r) => { const c = new MessageChannel(); c.port1.onmessage = () => r(); c.port2.postMessage(0); });
 
-async function autoplayLevel(id, { strategy = 'odds', maxSteps = 260, stepMs = 700 } = {}) {
+async function autoplayLevel(id, { strategy = 'odds', maxSteps = 260, stepMs = 700, expert = false } = {}) {
   const g = window.__game;
   if (id >= 100) g.startNight(id - 100);
-  else g.startLevel(id);
+  else g.startLevel(id, undefined, !!expert);
+  for (let i = 0; i < 80 && !q('#goal-go')?.offsetParent; i++) {
+    if (q('#booth-go')?.offsetParent) q('#booth-go').click();
+    else if (!q('#versus').classList.contains('hidden')) q('#versus').click();
+    await window.advanceTime(150);
+  }
   q('#goal-go').click();
   const log = [];
   let lastKey = '';
@@ -49,6 +54,14 @@ async function autoplayLevel(id, { strategy = 'odds', maxSteps = 260, stepMs = 7
       let b = s.best[0];
       if (strategy === 'alwaysRival') b = 'rival';
       if (strategy === 'alwaysSelf') b = 'self';
+      // at exactly ½ a good player uses an info card first (Peek, then Magnifier on the second shell)
+      const half = s.best.includes('rival') && s.best.includes('self');
+      const info = strategy === 'odds' && half && s.load?.type === 'mag' && !s.load.nextKnown ? ['peek', 'magnifier'].find((c) => g.duel.hand.includes(c)) : null;
+      if (info) {
+        document.querySelectorAll('#hand .card')[g.duel.hand.indexOf(info)].click();
+        log.push(info);
+        continue;
+      }
       if (b === 'eject' || b === 'double') {
         const idx = g.duel.hand.indexOf(b);
         document.querySelectorAll('#hand .card')[idx].click();

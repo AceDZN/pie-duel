@@ -1,6 +1,7 @@
 // Headless real-browser smoke run: every level played through the HUD buttons with the solver's best moves
 // (and optionally a constant strategy). Needs the dev server on :5216.  Usage: node tests/smoke.mjs [strategy] [ids]
 import { chromium } from 'playwright';
+import { toGoal } from './helpers-browser.mjs';
 
 const strategy = process.argv[2] ?? 'odds';
 const ids = (process.argv[3] ?? '1-17').split(',').flatMap((r) => {
@@ -20,7 +21,7 @@ await page.waitForFunction(() => window.autoplayLevel);
 let bad = 0;
 for (const id of ids) {
   const t0 = Date.now();
-  const r = await page.evaluate(([id, strategy]) => window.autoplayLevel(id, { strategy }), [id, strategy]);
+  const r = await page.evaluate(([id, strategy, expert]) => window.autoplayLevel(id, { strategy, expert }), [id, strategy, !!process.env.EXPERT]);
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   if (r.result) {
     console.log(`L${id} ${strategy}: won=${r.result.won} passed=${r.result.passed} stars=${r.result.stars} calls=${r.result.matchCorrect}/${r.result.matchDecisions} steps=${r.steps} (${secs}s)`);

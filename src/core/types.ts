@@ -97,6 +97,8 @@ export interface LevelDef {
   /** Double cards the rival holds (Big Mo): fired when P(at least one pie in two) beats his best single shot. */
   rivalDoubles?: number;
   transfer?: boolean;
+  /** expert variant of a passed level (see expertLevel). */
+  expert?: boolean;
   /** the flavor light shines on the next shell at the start of each of your turns. */
   autoFlavor?: boolean;
   /** stage look: 'booth' (default), 'dim' (night game), 'rooftop' (final). */

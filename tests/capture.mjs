@@ -2,6 +2,7 @@
 // Inputs are real clicks/keys; game time is stepped with window.advanceTime.  Needs a server (default :4216 preview).
 // Usage: BASE=http://localhost:4216/ node tests/capture.mjs [outDir]
 import { chromium } from 'playwright';
+import { toGoal } from './helpers-browser.mjs';
 import { mkdirSync } from 'node:fs';
 
 const out = process.argv[2] ?? 'docs/captures';
@@ -40,6 +41,7 @@ async function untilMyMove(p, maxMs = 30000) {
 }
 async function startLevel(p, id) {
   await p.evaluate((id) => window.__game.startLevel(id), id);
+  await toGoal(p);
   await p.click('#goal-go');
 }
 
@@ -50,6 +52,11 @@ const W = { width: 1672, height: 941 };
   const p = await open(W);
   await p.click('#btn-play');
   await adv(p, 300);
+  await shot(p, '00a-booth-card');
+  await p.click('#booth-go');
+  await adv(p, 400);
+  await shot(p, '00b-versus');
+  await toGoal(p);
   await shot(p, '00-goal-card');
   await p.click('#goal-go');
   await untilMyMove(p);

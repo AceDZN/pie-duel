@@ -3,7 +3,8 @@ import { Duel, CARD_PRICE, type Choice, type Decision, type DuelEvent } from './
 import { cmp, complement, eq, frac, mul, str, sub, type Frac, HALF } from './core/frac';
 import { pBet, pCoin } from './core/prob';
 import type { BetEvent, CardId, LevelDef, PlayerId } from './core/types';
-import { BOOTHS, LEVELS, levelById } from './levels';
+import { BOOTHS, LEVELS, expertLevel, levelById } from './levels';
+import { BOOTH_SUBJECTS } from './themes';
 import { generateNight } from './core/endless';
 import type { Stage, Seat } from './scene';
 import type { Sfx } from './audio';
@@ -104,24 +105,43 @@ export class Game {
     s.classList.remove('hidden');
     const total = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
     const next = this.nextLevelId();
+    const ex = this.save.expert ?? {};
     const token = (id: number) => {
       const L = levelById(id);
-      const open = this.unlocked(id);
-      const st = this.save.stars[id] ?? 0;
-      return `<button class="token ${id === next ? 'next' : ''} ${L.transfer ? 'transfer' : ''}" data-id="${id}" ${open ? '' : 'disabled'} title="${L.title}" aria-label="שלב ${id}: ${L.title}${open ? `, ${st} כוכבים` : ', נעול'}"><b>${ltr(id)}</b><span class="tstars">${open ? '★'.repeat(st) + '<i>' + '★'.repeat(3 - st) + '</i>' : '🔒'}</span></button>`;
+      const expert = this.expertMode;
+      const open = expert ? !!this.save.passed[id] : this.unlocked(id);
+      const st = expert ? ex[id] ?? 0 : this.save.stars[id] ?? 0;
+      const icon = expert ? '👑' : '★';
+      const crown = !expert && ex[id] ? '<span class="crown">👑</span>' : '';
+      return `<button class="token ${!expert && id === next ? 'next' : ''} ${L.transfer ? 'transfer' : ''} ${expert ? 'expert' : ''}" data-id="${id}" ${open ? '' : 'disabled'} title="${L.title}" aria-label="שלב ${id}: ${L.title}${open ? `, ${st} כוכבים` : ', נעול'}">${crown}<b>${ltr(id)}</b><span class="tstars">${open ? icon.repeat(st) + '<i>' + icon.repeat(3 - st) + '</i>' : '🔒'}</span></button>`;
     };
-    s.innerHTML = `<div class="sel-head"><div class="plaque"><span class="tent"></span><div><div class="booth-name">דו־קרב העוגות</div><div class="level-name">★ ${ltr(`${total}/51`)}</div></div></div><button class="btn dark" id="btn-back">חזרה</button></div>
+    const anyPassed = Object.keys(this.save.passed).length > 0;
+    const crowns = Object.values(ex).reduce((a, b) => a + b, 0);
+    s.innerHTML = `<div class="sel-head"><div class="plaque"><span class="tent"></span><div><div class="booth-name">דו־קרב העוגות</div><div class="level-name">★ ${ltr(`${total}/51`)}${crowns ? ` · 👑 ${ltr(`${crowns}/51`)}` : ''}</div></div></div>
+      ${anyPassed ? `<div class="mode-toggle" role="group" aria-label="רמת קושי"><button class="${this.expertMode ? '' : 'on'}" id="mode-normal">רגיל</button><button class="${this.expertMode ? 'on' : ''}" id="mode-expert">🔥 מומחה</button></div>` : ''}
+      <button class="btn dark" id="btn-back">חזרה</button></div>
+      ${this.expertMode ? '<div class="mode-note">מצב מומחה: שלבים שכבר עברתם, בלי מד הסיכויים ונגד יריב חכם יותר. כל ניצחון = כתר 👑</div>' : ''}
       <div class="midway">${BOOTHS.map((b) => {
         const L = levelById(b.levels[0]);
         const open = this.unlocked(b.levels[0]);
         const img = this.stage.portrait(L.rival.model, null);
-        return `<div class="stall b${b.id} ${open ? '' : 'locked'}"><div class="canopy"></div><div class="sign">${b.name}</div><div class="who">${
+        return `<div class="stall b${b.id} ${open ? '' : 'locked'}"><div class="canopy"></div><div class="sign">${b.name}</div><div class="subj">${BOOTH_SUBJECTS[b.id].subject}</div><div class="who">${
           L.rival.seats === 2 ? `<img src="${img}" alt="" class="twin a"/><img src="${this.stage.portrait(L.rival.model, 0xb8d8ff)}" alt="" class="twin b"/>` : `<img src="${img}" alt=""/>`
         }</div><div class="rival">${b.rival}</div><div class="tokens">${b.levels.map(token).join('')}</div></div>`;
       }).join('')}</div>
-      <button class="btn pink big" id="btn-go">שחקו! <small>שלב ${ltr(next)}</small></button>`;
-    s.querySelectorAll<HTMLButtonElement>('.token').forEach((b) => (b.onclick = () => this.startLevel(Number(b.dataset.id))));
+      <button class="btn pink big" id="btn-go">${this.expertMode ? '🔥 ' : ''}שחקו! <small>שלב ${ltr(next)}</small></button>`;
+    s.querySelectorAll<HTMLButtonElement>('.token').forEach((b) => (b.onclick = () => this.startLevel(Number(b.dataset.id), undefined, this.expertMode)));
     $('btn-back').onclick = () => this.showTitle();
+    document.getElementById('mode-normal')?.addEventListener('click', () => {
+      this.expertMode = false;
+      this.sfx.click();
+      this.showSelect();
+    });
+    document.getElementById('mode-expert')?.addEventListener('click', () => {
+      this.expertMode = true;
+      this.sfx.click();
+      this.showSelect();
+    });
     $('btn-go').onclick = () => this.startLevel(next);
   }
 
@@ -154,19 +174,28 @@ export class Game {
     this.startLevel(g.def.id, g.def);
   }
 
-  startLevel(id: number, def?: LevelDef) {
+  /** expert mode toggle on the midway (applies to levels you've passed). */
+  expertMode = false;
+
+  private key(id: number) {
+    return this.level.expert ? id + 1000 : id;
+  }
+
+  startLevel(id: number, def?: LevelDef, expert = false) {
     this.sfx.unlock();
-    this.level = def ?? levelById(id);
-    this.attempt = (this.attempt && this.duel?.level.id === id ? this.attempt : 0) + 1;
+    this.level = def ?? (expert ? expertLevel(levelById(id)) : levelById(id));
+    const sameLevel = this.duel?.level.id === id && !!this.duel?.level.expert === !!this.level.expert;
+    this.attempt = (this.attempt && sameLevel ? this.attempt : 0) + 1;
     // only the very first play of a level uses its authored (tutorial) seed; every replay is a fresh shuffle
     const plays = this.save.plays ?? (this.save.plays = {});
     const fresh = (Math.random() * 0x7fffffff) ^ (Date.now() & 0xffff) ^ (this.seedBump++ * 7919);
-    const seed = def || plays[id] ? fresh >>> 0 : this.level.seed;
+    const k = this.key(id);
+    const seed = def || plays[k] ? fresh >>> 0 : this.level.seed;
     if (!def) {
-      plays[id] = (plays[id] ?? 0) + 1;
+      plays[k] = (plays[k] ?? 0) + 1;
       writeSave(this.save);
     }
-    this.duel = new Duel(this.level, seed, this.save.carry[id] ?? []);
+    this.duel = new Duel(this.level, seed, this.save.carry[k] ?? []);
     $('title').classList.add('hidden');
     $('select').classList.add('hidden');
     $('overlay').classList.add('hidden');
@@ -174,7 +203,7 @@ export class Game {
     $('hud').classList.remove('hidden');
     $('explain').classList.add('hidden');
     $('cream-overlay').className = '';
-    this.stage.setLevel(this.level.rival.model, this.level.rival.seats, this.level.stage ?? 'booth');
+    this.stage.setLevel(this.level.rival.model, this.level.rival.seats, this.level.stage ?? 'booth', this.level.id >= 100 ? ((((this.level.id - 101) % 4) + 1) as 1 | 2 | 3 | 4) : this.level.booth);
     this.stage.frame('home', 0);
     this.hp = Object.fromEntries(this.duel.players.map((p) => [p.id, p.hp]));
     this.lastOutcome = '';
@@ -182,17 +211,21 @@ export class Game {
     const booth = BOOTHS.find((b) => b.id === this.level.booth)!;
     $('booth-name').textContent = this.level.id >= 100 ? 'לילה בקרנבל' : booth.name;
     $('level-name').innerHTML = this.level.id >= 100 ? this.level.title : `שלב ${ltr(this.level.id)} · ${this.level.title}`;
+    $('hud').classList.toggle('expert', !!this.level.expert);
     this.renderHp();
     this.renderHand();
     this.renderChips();
     this.ui = 'intro';
     this.setActions('none');
-    const firstEver = id === 1 && this.attempt === 1;
-    const carried = (this.save.carry[id] ?? []).length;
+    const firstEver = id === 1 && this.attempt === 1 && !this.level.expert;
+    const carried = (this.save.carry[k] ?? []).length;
     $('goal-card').innerHTML = `<h3>${this.level.title}</h3><p>${this.level.goal}</p>${firstEver ? RULES_HTML : ''}${
       this.level.transfer ? '<p>🎯 <b>שלב מבחן:</b> בלי רמזים.</p>' : ''
     }${carried ? `<p>ההחלטות הטובות מהניסיון הקודם נשמרות (${ltr(carried)}).</p>` : ''}<div class="row"><button class="btn pink" id="goal-go">יאללה!</button></div>`;
-    $('goal-card').classList.remove('hidden');
+    this.intro().then(() => {
+      if (this.duel?.level !== this.level) return;
+      $('goal-card').classList.remove('hidden');
+    });
     $('goal-go').onclick = () => {
       this.sfx.unlock();
       this.sfx.click();
@@ -200,6 +233,48 @@ export class Game {
       this.ui = 'play';
       this.run(this.duel!.drain());
     };
+  }
+
+  /** Booth subject card (first visit), then a versus banner while the camera swoops in. */
+  private async intro() {
+    const L = this.level;
+    const d = this.duel;
+    const boothN = (L.id >= 100 ? 5 : L.booth) as 1 | 2 | 3 | 4 | 5;
+    const seen = this.save.seenBooths ?? (this.save.seenBooths = {});
+    if (L.id < 100 && !seen[boothN] && !L.expert) {
+      const subj = BOOTH_SUBJECTS[boothN];
+      const booth = BOOTHS.find((b) => b.id === boothN)!;
+      const card = $('booth-card');
+      card.innerHTML = `<div class="bc-inner b${boothN}"><div class="canopy"></div><div class="bc-kicker">${boothN === 5 ? 'הגמר' : `דוכן ${ltr(boothN)}`} · ${subj.grade}</div><h2>${booth.name}</h2>
+        <img src="${this.stage.portrait(L.rival.model)}" alt="" /><div class="bc-rival">נגד ${booth.rival}</div>
+        <div class="bc-subject">הנושא: <b>${subj.subject}</b></div><ul>${subj.points.map((x) => `<li>${x}</li>`).join('')}</ul>
+        <button class="btn gold big" id="booth-go">נכנסים לדוכן ›</button></div>`;
+      card.classList.remove('hidden');
+      this.sfx.cheer();
+      await new Promise<void>((resolve) => {
+        $('booth-go').onclick = () => {
+          this.sfx.click();
+          resolve();
+        };
+      });
+      card.classList.add('hidden');
+      seen[boothN] = true;
+      writeSave(this.save);
+      if (this.duel !== d) return;
+    }
+    // versus banner + camera swoop
+    const vs = $('versus');
+    const twin = L.rival.seats === 2 ? `<img class="twin2" src="${this.stage.portrait(L.rival.model, 0xb8d8ff)}" alt=""/>` : '';
+    vs.innerHTML = `<div class="vs-side you"><div class="vs-face">${FACE_YOU}</div><div class="vs-name">את/ה</div></div><div class="vs-mid"><div class="vs-word">VS</div><div class="vs-level">${L.id >= 100 ? L.title : `שלב ${ltr(L.id)}`}${L.expert ? ' · 🔥 מומחה' : ''}</div><div class="vs-title">${L.id >= 100 ? '' : L.title.replace(' · מומחה', '')}</div></div><div class="vs-side rival"><div class="vs-port"><img src="${this.stage.portrait(L.rival.model)}" alt=""/>${twin}</div><div class="vs-name">${L.rival.name}</div></div>`;
+    vs.classList.remove('hidden');
+    this.sfx.drumroll(900);
+    this.stage.frame('wide', 0);
+    this.stage.frame('home', this.stage.reducedMotion ? 0 : 1500);
+    for (const r of this.stage.rivals.keys()) this.stage.anim(r, 'laugh');
+    let skip = false;
+    vs.onclick = () => (skip = true);
+    for (let t = 0; t < 1700 && !skip; t += 100) await this.stage.tweens.wait(100);
+    vs.classList.add('hidden');
   }
 
   /** Play a batch of events, then hand control to the player or the rival. */
@@ -712,8 +787,15 @@ export class Game {
     this.setActions('none');
     const id = d.level.id;
     const endless = id >= 100;
+    const expert = !!d.level.expert;
     if (endless) {
       if (r.passed) this.save.nightBest = Math.max(this.save.nightBest ?? 0, this.night);
+    } else if (expert) {
+      const ex = this.save.expert ?? (this.save.expert = {});
+      if (r.passed) {
+        ex[id] = Math.max(ex[id] ?? 0, r.stars);
+        delete this.save.carry[id + 1000];
+      } else this.save.carry[id + 1000] = [...d.carry, ...d.decisions].slice(-16);
     } else if (r.passed) {
       this.save.passed[id] = true;
       this.save.stars[id] = Math.max(this.save.stars[id] ?? 0, r.stars);
@@ -730,7 +812,11 @@ export class Game {
       this.sfx.lose();
       for (const s of this.stage.rivals.keys()) this.stage.anim(s, 'cheer');
     }
-    const stars = `<div class="stars-big">${'★'.repeat(r.stars)}<span class="off">${'★'.repeat(3 - r.stars)}</span></div>`;
+    const stars = `<div class="stars-big">${[0, 1, 2].map((i) => `<span class="${i < r.stars ? 'on' : 'off'}" style="animation-delay:${0.25 + i * 0.28}s">${expert && i < r.stars ? '👑' : '★'}</span>`).join('')}</div>`;
+    if (r.passed) {
+      [0, 1, 2].slice(0, r.stars).forEach((i) => setTimeout(() => this.sfx.coin(), 250 + i * 280));
+      this.domConfetti();
+    }
     const title = r.won ? 'ניצחת! 🥧' : r.passed ? 'הפסדת בקרב — אבל עברת!' : 'הקצפת ניצחה הפעם…';
     const L0 = d.level.loads[0];
     const hint =
@@ -753,11 +839,14 @@ export class Game {
     const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.pSeen))} ובחרת ${wrong.choice === 'self' ? 'לירות בעצמך' : wrong.choice === 'rival' ? 'לירות ביריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
     this.overlay(
       `<h2>${title}</h2>${stars}<p>${why}</p><p>החלטות לפי הסיכויים: ${ltr(`${r.matchCorrect}/${r.matchDecisions}`)}${d.carry.length ? ` (כולל ניסיונות קודמים: ${ltr(`${r.correct}/${r.total}`)})` : ''}</p>${lesson}
-      <div class="row-btns">${r.passed && next ? `<button class="btn gold" id="ov-next">לשלב הבא ›</button>` : ''}${endless && r.passed ? `<button class="btn gold" id="ov-night">הלילה הבא ›</button>` : ''}<button class="btn ${r.passed ? 'dark' : 'pink'}" id="ov-retry">${endless && !r.passed ? 'לילה חדש' : 'שוב'}</button><button class="btn dark" id="ov-select">בחירת דוכן</button></div>`,
+      ${r.passed && !endless && !expert && next && next.booth !== d.level.booth ? `<p class="unlock">🎪 נפתח דוכן חדש: <b>${BOOTHS.find((b) => b.id === next.booth)!.name}</b> — ${BOOTH_SUBJECTS[next.booth].subject}</p>` : ''}
+      ${r.passed && !endless && !expert ? '<p class="unlock">🔥 נפתח מצב מומחה לשלב הזה: בלי מד, יריב חכם יותר.</p>' : ''}
+      <div class="row-btns">${r.passed && next && !expert ? `<button class="btn gold" id="ov-next">לשלב הבא ›</button>` : ''}${endless && r.passed ? `<button class="btn gold" id="ov-night">הלילה הבא ›</button>` : ''}<button class="btn ${r.passed ? 'dark' : 'pink'}" id="ov-retry">${endless && !r.passed ? 'לילה חדש' : 'שחקו שוב'}</button>${r.passed && !endless && !expert ? `<button class="btn dark" id="ov-expert">🔥 מומחה</button>` : ''}<button class="btn dark" id="ov-select">לשדרת הדוכנים</button></div>`,
       {
-        ...(r.passed && next ? { 'ov-next': () => this.startLevel(next.id) } : {}),
+        ...(r.passed && next && !expert ? { 'ov-next': () => this.startLevel(next.id) } : {}),
         ...(endless && r.passed ? { 'ov-night': () => this.startNight(this.night + 1) } : {}),
-        'ov-retry': () => (endless ? this.startNight(r.passed ? this.night : 1) : this.startLevel(id)),
+        ...(r.passed && !endless && !expert ? { 'ov-expert': () => this.startLevel(id, undefined, true) } : {}),
+        'ov-retry': () => (endless ? this.startNight(r.passed ? this.night : 1) : this.startLevel(id, undefined, expert)),
         'ov-select': () => this.showSelect(),
       },
     );
@@ -921,7 +1010,7 @@ export class Game {
     $('hp-card').innerHTML = rows
       .map((r) => {
         const hp = this.hp[r.id] ?? 0;
-        return `<div class="hp-row ${r.cls}" aria-label="${r.name}: ${hp} מתוך ${r.max}"><span class="face">${r.face}</span><span class="who">${r.name}</span><span class="pies">${Array.from({ length: r.max }, (_, i) => `<span class="hp-pie ${i < hp ? '' : 'lost'}">${PIE_SVG}</span>`).join('')}</span>${changed === r.id ? `<span class="delta">${ltr('-1')}</span>` : ''}</div>`;
+        return `<div class="hp-row ${r.cls}" aria-label="${r.name}: ${hp} מתוך ${r.max}"><span class="face">${r.face}</span><span class="who">${r.name}</span><span class="pies">${Array.from({ length: r.max }, (_, i) => `<span class="hp-pie ${r.max > 6 ? 'small' : ''} ${i < hp ? '' : 'lost'}">${PIE_SVG}</span>`).join('')}</span>${changed === r.id ? `<span class="delta">${ltr('-1')}</span>` : ''}</div>`;
       })
       .join('');
   }
@@ -1004,7 +1093,9 @@ export class Game {
       const p = r.d ? r.n / r.d : 0;
       $('meter-fill').style.height = `${p * 100}%`;
       const simple = frac(r.n, Math.max(1, r.d));
-      $('meter-frac').innerHTML = r.d === 0 ? '—' : simple.d !== r.d && r.d > 1 ? `${r.n}/${r.d} = ${str(simple)}` : `${r.n}/${r.d}`;
+      const reduced = simple.d !== r.d && r.d > 1;
+      $('meter-frac').innerHTML = r.d === 0 ? '—' : reduced ? `${r.n}/${r.d}<br>= ${str(simple)}` : `${r.n}/${r.d}`;
+      $('meter-frac').classList.toggle('long', reduced);
     } else {
       $('meter-fill').style.height = '50%';
       $('meter-frac').textContent = '?';
@@ -1113,6 +1204,23 @@ export class Game {
   }
 
   // ================================================================= small UI helpers
+
+  private domConfetti() {
+    const box = document.createElement('div');
+    box.className = 'dom-confetti';
+    const cols = ['#ff4fa3', '#3ee6ff', '#ffc35a', '#7ee07a', '#b36bff'];
+    for (let i = 0; i < 70; i++) {
+      const p = document.createElement('i');
+      p.style.left = `${Math.random() * 100}%`;
+      p.style.background = cols[i % cols.length];
+      p.style.animationDelay = `${Math.random() * 0.6}s`;
+      p.style.animationDuration = `${1.6 + Math.random() * 1.4}s`;
+      p.style.transform = `rotate(${Math.random() * 360}deg)`;
+      box.appendChild(p);
+    }
+    $('app').appendChild(box);
+    setTimeout(() => box.remove(), 3600);
+  }
 
   private toastTimer = 0;
   toast(html: string) {

@@ -337,3 +337,22 @@ export const LEVELS: LevelDef[] = [
 ];
 
 export const levelById = (id: number) => LEVELS.find((l) => l.id === id)!;
+
+/**
+ * Expert variant of a passed level: no meter, the rival plays one step smarter (Bubu reads the odds,
+ * odds players also peek), one more cream point for the rival. Same subject, harder table.
+ */
+export function expertLevel(base: LevelDef): LevelDef {
+  const style = base.rival.style === 'naive' ? 'odds' : base.rival.style === 'odds' ? 'champion' : base.rival.style;
+  return {
+    ...base,
+    title: `${base.title} · מומחה`,
+    rival: { ...base.rival, style },
+    hp: { you: base.hp.you, rival: base.hp.rival + 1 },
+    meter: { kind: 'off' },
+    callIt: true,
+    rivalPeeks: style === 'champion' ? Math.max(base.rivalPeeks ?? 0, 1) : base.rivalPeeks,
+    transfer: true,
+    expert: true,
+  };
+}

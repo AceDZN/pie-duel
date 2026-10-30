@@ -14,6 +14,10 @@ export interface Save {
   nightBest?: number;
   /** how many times each level was started (the first play uses the authored seed). */
   plays?: Record<number, number>;
+  /** booths whose subject card was shown. */
+  seenBooths?: Record<number, boolean>;
+  /** expert-mode results per level (stars). */
+  expert?: Record<number, number>;
 }
 
 export function loadSave(): Save {

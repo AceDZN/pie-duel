@@ -4,10 +4,12 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { fitHeight, shadowsOn, type Models, type ModelName } from './models';
-import { backdrop, chalkboard, neonSign, radialGlow, stripes, tableTop, wheelFace } from './textures';
+import { backdrop, cardFace, chalkboard, neonSign, radialGlow, stripes, tableTop, treeBoard, wheelFace } from './textures';
+import { THEMES, type PropSet, type Theme } from './themes';
 import { Tweens, ease } from './tween';
 
 export type Seat = 'you' | 'r1' | 'r2';
@@ -277,6 +279,18 @@ export class Stage {
   private aimYaw = 0;
   private aimYawTarget = 0;
   private aimPitch = 0;
+  grade: ShaderPass;
+  private refs!: { roof: THREE.MeshStandardMaterial; valance: THREE.MeshStandardMaterial; wall: THREE.MeshStandardMaterial; sign: THREE.MeshBasicMaterial; boards: THREE.MeshStandardMaterial[]; backdrop: THREE.MeshBasicMaterial; tableTop: THREE.MeshStandardMaterial; tableSide: THREE.MeshStandardMaterial };
+  private props = new Map<PropSet, THREE.Group>();
+  private theme: Theme = THEMES[1];
+  private rimLight!: THREE.SpotLight;
+  private dust!: THREE.Points;
+  private crowd: THREE.Sprite[] = [];
+  private spinners: THREE.Object3D[] = [];
+  private balloons: THREE.Object3D[] = [];
+  private beams: THREE.Mesh[] = [];
+  private smoke: { mesh: THREE.Mesh; t: number; v: THREE.Vector3 }[] = [];
+  private recoil = 0;
 
   constructor(canvas: HTMLCanvasElement, models: Models) {
     this.models = models;
@@ -291,9 +305,11 @@ export class Stage {
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.55, 0.45, 0.9);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.5, 0.4, 0.93);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
+    this.grade = new ShaderPass(GRADE_SHADER);
+    this.composer.addPass(this.grade);
 
     const hemi = new THREE.HemisphereLight(0xb9a6ff, 0x3a1830, 0.9);
     const key = new THREE.DirectionalLight(0xffe2b8, 2.0);
@@ -313,6 +329,12 @@ export class Stage {
     warm.position.set(0, 2.3, 0.4);
     this.scene.add(hemi, key, pink, cyan, warm);
     this.lights = { key, hemi, neon: [pink, cyan, warm] };
+    // a warm spotlight from behind and above the rival: rim light that pops the silhouette off the back wall
+    this.rimLight = new THREE.SpotLight(0xffc27a, 9, 6, 0.32, 0.7, 1.4);
+    this.rimLight.position.set(0.6, 3.2, -2.3);
+    this.scene.add(this.rimLight, this.rimLight.target);
+    this.dust = makeDust();
+    this.scene.add(this.dust);
 
     this.buildBooth();
     this.buildTable();
@@ -337,17 +359,20 @@ export class Stage {
     ground.receiveShadow = true;
     b.add(ground);
     // backdrop cylinder
-    const bd = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 9, 48, 1, true, Math.PI * 0.6, Math.PI * 0.8), new THREE.MeshBasicMaterial({ map: backdrop(), side: THREE.BackSide, fog: false }));
+    const bdMat = new THREE.MeshBasicMaterial({ map: backdrop(), side: THREE.BackSide, fog: false });
+    const bd = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 9, 48, 1, true, Math.PI * 0.6, Math.PI * 0.8), bdMat);
     bd.position.set(0, 3.8, 2);
     b.add(bd);
     // canopy: striped slanted roof + scalloped valance
     const canopyTex = stripes('#d9343b', '#f8efe0', 18);
-    const roof = new THREE.Mesh(new THREE.PlaneGeometry(7, 3.2), new THREE.MeshStandardMaterial({ map: canopyTex, side: THREE.DoubleSide, roughness: 0.9 }));
+    const roofMat = new THREE.MeshStandardMaterial({ map: canopyTex, side: THREE.DoubleSide, roughness: 0.9 });
+    const roof = new THREE.Mesh(new THREE.PlaneGeometry(7, 3.2), roofMat);
     roof.position.set(0, 3.15, -1.0);
     roof.rotation.x = Math.PI / 2 - 0.42;
     b.add(roof);
     const valTex = stripes('#d9343b', '#f8efe0', 28);
-    const valance = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 0.35, 64, 1, true, Math.PI * 0.68, Math.PI * 0.64), new THREE.MeshStandardMaterial({ map: valTex, side: THREE.DoubleSide }));
+    const valMat = new THREE.MeshStandardMaterial({ map: valTex, side: THREE.DoubleSide });
+    const valance = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 0.35, 64, 1, true, Math.PI * 0.68, Math.PI * 0.64), valMat);
     valance.position.set(0, 2.62, 1.6);
     b.add(valance);
     // posts
@@ -359,7 +384,8 @@ export class Stage {
       b.add(p);
     }
     // back wall with prize shelves
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 2.8), new THREE.MeshStandardMaterial({ color: 0x4b1f3e, roughness: 0.9 }));
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x4b1f3e, roughness: 0.9 });
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 2.8), wallMat);
     wall.position.set(0, 1.4, -2.6);
     wall.receiveShadow = true;
     b.add(wall);
@@ -372,7 +398,8 @@ export class Stage {
     cb2.position.set(1.65, 1.55, -2.45);
     b.add(cb1, cb2);
     // neon sign
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.64), new THREE.MeshBasicMaterial({ map: neonSign('PIE DUEL'), transparent: true, toneMapped: false }));
+    const signMat = new THREE.MeshBasicMaterial({ map: neonSign('PIE DUEL'), transparent: true, toneMapped: false });
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.64), signMat);
     sign.position.set(-2.4, 2.35, -1.6);
     sign.rotation.y = 0.5;
     b.add(sign);
@@ -425,7 +452,18 @@ export class Stage {
       }
       b.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), wireM));
     }
-    // popcorn cart (right)
+    this.refs = {
+      roof: roofMat,
+      valance: valMat,
+      wall: wallMat,
+      sign: signMat,
+      boards: [cb1.material as THREE.MeshStandardMaterial, cb2.material as THREE.MeshStandardMaterial],
+      backdrop: bdMat,
+      tableTop: null as unknown as THREE.MeshStandardMaterial,
+      tableSide: null as unknown as THREE.MeshStandardMaterial,
+    };
+    this.buildMidway();
+    // popcorn cart (right) — the bakery booth's prop
     const cart = new THREE.Group();
     const box = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.45), new THREE.MeshStandardMaterial({ color: 0xc8202c, roughness: 0.5 }));
     box.position.y = 0.75;
@@ -440,7 +478,7 @@ export class Stage {
     cart.position.set(2.3, 0, -1.3);
     cart.rotation.y = -0.6;
     shadowsOn(cart);
-    b.add(cart);
+    this.propGroup('bakery').add(cart);
   }
 
   private buildShelf() {
@@ -488,11 +526,11 @@ export class Stage {
   }
 
   private buildTable() {
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.06, 64), [
-      new THREE.MeshStandardMaterial({ color: 0x7b1a2a, roughness: 0.5 }),
-      new THREE.MeshStandardMaterial({ map: tableTop(), roughness: 0.35, metalness: 0.05 }),
-      new THREE.MeshStandardMaterial({ color: 0x7b1a2a }),
-    ]);
+    const side = new THREE.MeshStandardMaterial({ color: 0x7b1a2a, roughness: 0.5 });
+    const face = new THREE.MeshStandardMaterial({ map: tableTop(), roughness: 0.35, metalness: 0.05 });
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.06, 64), [side, face, side]);
+    this.refs.tableTop = face;
+    this.refs.tableSide = side;
     top.position.set(0, TABLE_Y - 0.03, 0);
     top.receiveShadow = true;
     const rim = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.035, 10, 80), new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.8, roughness: 0.3 }));
@@ -554,6 +592,14 @@ export class Stage {
       inner.rotation.y = Math.PI / 2;
       const m = fitHeight(inner, 0.74);
       shadowsOn(m);
+      m.traverse((o) => {
+        const mm = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial | undefined;
+        if (mm && 'transmission' in mm && mm.transmission > 0) {
+          mm.transmission = 0;
+          mm.roughness = Math.max(mm.roughness, 0.45);
+          mm.color.multiplyScalar(0.82);
+        }
+      });
       swivel.add(m);
       // the model's dome has pies baked in and reads as frosted glass; the real mix shows in a clear loading jar on top
       const jar = new THREE.Mesh(
@@ -732,7 +778,8 @@ export class Stage {
 
   // ------------------------------------------------------------ level setup
 
-  setLevel(rivalModel: string, seats: 1 | 2, look: StageLook) {
+  setLevel(rivalModel: string, seats: 1 | 2, look: StageLook, booth: 1 | 2 | 3 | 4 | 5 = 1) {
+    this.applyTheme(booth);
     for (const r of this.rivals.values()) this.scene.remove(r.root);
     this.rivals.clear();
     const gltf = this.models[rivalModel as ModelName] ?? this.models['rival-bubu'];
@@ -761,7 +808,14 @@ export class Stage {
     this.lights.hemi.intensity = dim ? 0.35 : look === 'rooftop' ? 0.6 : 0.9;
     this.lights.key.intensity = dim ? 0.9 : 2.0;
     this.lights.neon.forEach((l) => (l.intensity = dim ? 2.2 : 5.5));
-    this.scene.fog = new THREE.Fog(dim ? 0x0e0820 : 0x24113f, dim ? 5 : 9, dim ? 16 : 26);
+    this.rimLight.intensity = dim ? 6 : 9;
+    this.scene.fog = new THREE.Fog(dim ? 0x0a0618 : this.theme.fog, dim ? 5 : 9, dim ? 16 : 26);
+    this.scene.background = new THREE.Color(dim ? 0x0a0618 : this.theme.fog);
+    // aim the rim light at the rival's shoulders (between the twins on two-seat levels)
+    const faces = [...this.rivals.values()].map((r) => r.facePos());
+    const mid = faces.reduce((a, b) => a.add(b), new THREE.Vector3()).multiplyScalar(1 / Math.max(1, faces.length));
+    this.rimLight.target.position.copy(mid).add(V(0, -0.25, 0));
+    this.rimLight.position.set(mid.x + 0.2, 3.1, mid.z - 1.3);
     for (const b of this.stringLights) b.visible = !dim || Math.random() < 0.4;
     this.clearCream();
     this.aimYaw = this.aimYawTarget = this.yawTo('r1');
@@ -906,7 +960,7 @@ export class Stage {
   }
 
   /** Camera framing: home, leaning in toward the cannon, or toward a target. */
-  frame(mode: 'home' | 'lean' | Seat | 'dummy' | 'shop', ms = 500) {
+  frame(mode: 'home' | 'lean' | Seat | 'dummy' | 'shop' | 'wide', ms = 500) {
     const pos = CAM_HOME.clone();
     const look = LOOK_HOME.clone();
     if (mode === 'lean') {
@@ -921,6 +975,9 @@ export class Stage {
       look.copy(this.cannon.position).add(V(0, 0.3, 0));
     } else if (mode === 'dummy') {
       look.copy(this.dummy.position).add(V(0, 1.1, 0));
+    } else if (mode === 'wide') {
+      pos.add(V(0.4, 0.55, 2.2));
+      look.add(V(0, 0.15, 0));
     } else if (mode === 'shop') {
       pos.add(V(0, 0.25, -0.15));
       look.set(0.1, 0.8, -0.2);
@@ -928,6 +985,13 @@ export class Stage {
     const p0 = this.camTarget.pos.clone();
     const l0 = this.camTarget.look.clone();
     if (this.reducedMotion) ms = 0;
+    if (ms === 0) {
+      this.camTarget.pos.copy(pos);
+      this.camTarget.look.copy(look);
+      this.camPos.copy(pos);
+      this.camLook.copy(look);
+      return Promise.resolve();
+    }
     return this.tweens.tween(ms, (k) => {
       const e = ease.inOut(k);
       this.camTarget.pos.lerpVectors(p0, pos, e);
@@ -950,6 +1014,8 @@ export class Stage {
     proj.position.copy(from);
     this.scene.add(proj);
     this.shake = Math.max(this.shake, 0.4);
+    this.recoil = 1;
+    this.puff(from);
     for (const b of this.bulbs) (b.material as THREE.MeshBasicMaterial).color.set(0xffffff);
     if (slow && !this.reducedMotion) this.tweens.timeScale = 0.45;
     const dist = from.distanceTo(to);
@@ -1089,10 +1155,12 @@ export class Stage {
     for (const r of this.rivals.values()) r.update(sdt);
     this.confetti.update(sdt);
     this.cream.update(sdt);
-    // cannon swivel
+    // cannon swivel and recoil kick
     const swivel = this.cannon.userData.swivel as THREE.Group;
     swivel.rotation.y = this.aimYaw;
-    swivel.rotation.x = this.aimPitch * 0.5;
+    swivel.rotation.x = this.aimPitch * 0.5 - this.recoil * 0.12;
+    this.recoil = Math.max(0, this.recoil - dt * 4);
+    this.animateAmbience(sdt);
     // ferris wheel and twinkling bulbs
     const fw = this.booth.userData.ferris as THREE.Group;
     if (fw) fw.rotation.z += sdt * 0.08;
@@ -1128,6 +1196,262 @@ export class Stage {
     }
     this.camera.lookAt(this.camLook);
     this.composer.render();
+  }
+
+  // ------------------------------------------------------------ themes and ambience
+
+  private propGroup(set: PropSet) {
+    let g = this.props.get(set);
+    if (!g) {
+      g = new THREE.Group();
+      g.visible = false;
+      this.scene.add(g);
+      this.props.set(set, g);
+    }
+    return g;
+  }
+
+  /** Background midway: neighbouring stalls, a crowd of silhouettes, balloons. */
+  private buildMidway() {
+    const stall = this.models['booth-stall'];
+    if (stall) {
+      for (const [x, z, ry, s] of [
+        [-4.6, -4.2, 0.55, 3.2],
+        [4.8, -4.6, -0.6, 3.3],
+        [-8.2, -7.5, 0.4, 3.4],
+        [8.6, -8, -0.35, 3.4],
+      ] as [number, number, number, number][]) {
+        const m = fitHeight(stall.scene.clone(), s);
+        m.position.set(x, 0, z);
+        m.rotation.y = ry;
+        shadowsOn(m, false, true);
+        this.booth.add(m);
+      }
+    }
+    // crowd silhouettes that sway and bob
+    const tex = crowdTexture();
+    for (let i = 0; i < 26; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color().setHSL(0.75 + Math.random() * 0.15, 0.4, 0.06 + Math.random() * 0.06), transparent: true, depthWrite: false }));
+      const h = 1.5 + Math.random() * 0.35;
+      sp.scale.set(h * 0.42, h, 1);
+      const side = i % 2 ? 1 : -1;
+      sp.position.set(side * (3.2 + Math.random() * 4.5), h / 2, -3.5 - Math.random() * 5);
+      sp.userData.base = sp.position.y;
+      sp.userData.ph = Math.random() * 10;
+      this.booth.add(sp);
+      this.crowd.push(sp);
+    }
+  }
+
+  private buildProps(set: PropSet) {
+    const g = this.propGroup(set);
+    if (g.userData.built) return;
+    g.userData.built = true;
+    if (set === 'bakery') {
+      // a tiered pie stand behind the cannon
+      const stand = new THREE.Group();
+      const brass = new THREE.MeshStandardMaterial({ color: 0xc8913a, metalness: 0.85, roughness: 0.3 });
+      for (let t = 0; t < 3; t++) {
+        const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.34 - t * 0.09, 0.34 - t * 0.09, 0.02, 32), brass);
+        plate.position.y = 0.55 + t * 0.32;
+        stand.add(plate);
+        for (let k = 0; k < 5 - t; k++) {
+          const pie = this.piePrototype.clone();
+          const a = (k / (5 - t)) * Math.PI * 2;
+          pie.position.set(Math.cos(a) * (0.22 - t * 0.07), plate.position.y + 0.03, Math.sin(a) * (0.22 - t * 0.07));
+          pie.scale.multiplyScalar(0.9);
+          stand.add(pie);
+        }
+      }
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.06, 1.2, 12), brass);
+      pole.position.y = 0.6;
+      stand.add(pole);
+      stand.position.set(-1.75, 0, -1.65);
+      shadowsOn(stand);
+      g.add(stand);
+    } else if (set === 'parlor') {
+      // velvet curtains, a hanging card-table lamp, playing cards and chips on the felt
+      const velvet = new THREE.MeshStandardMaterial({ color: 0x4a1468, roughness: 0.75, side: THREE.DoubleSide });
+      for (const x of [-2.35, 2.35]) {
+        const geo = new THREE.PlaneGeometry(1.1, 3.0, 24, 1);
+        const pos = geo.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(pos.getX(i) * 14) * 0.06);
+        geo.computeVertexNormals();
+        const cur = new THREE.Mesh(geo, velvet);
+        cur.position.set(x, 1.5, -1.9);
+        cur.rotation.y = x < 0 ? 0.35 : -0.35;
+        cur.receiveShadow = true;
+        g.add(cur);
+      }
+      const shade = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.28, 32, 1, true), new THREE.MeshStandardMaterial({ color: 0x1f6b46, side: THREE.DoubleSide, roughness: 0.4, emissive: 0x0a2a18 }));
+      shade.position.set(0, 2.45, -0.35);
+      const lampBulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff0c0, toneMapped: false }));
+      lampBulb.position.set(0, 2.36, -0.35);
+      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.8, 6), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+      cord.position.set(0, 2.98, -0.35);
+      const lamp = new THREE.SpotLight(0xfff0c8, 18, 4, 0.75, 0.5, 1.2);
+      lamp.position.set(0, 2.3, -0.35);
+      lamp.target.position.set(0, TABLE_Y, -0.2);
+      g.add(shade, lampBulb, cord, lamp, lamp.target);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.6, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.03, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+      cone.position.set(0, 1.55, -0.3);
+      g.add(cone);
+      this.beams.push(cone);
+      const suits: [string, string, boolean][] = [['A', '♠', false], ['K', '♥', true], ['7', '♦', true], ['Q', '♣', false], ['3', '♥', true]];
+      suits.forEach(([r, su, red], i) => {
+        const card = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.13), new THREE.MeshStandardMaterial({ map: cardFace(r, su, red), roughness: 0.6 }));
+        card.rotation.x = -Math.PI / 2;
+        card.rotation.z = (Math.random() - 0.5) * 1.2;
+        card.position.set(0.55 + (i % 3) * 0.13, TABLE_Y + 0.002 + i * 0.001, -0.35 + Math.floor(i / 3) * 0.17);
+        card.receiveShadow = true;
+        g.add(card);
+      });
+    } else if (set === 'toys') {
+      // balloons, toy blocks and a chalk tree diagram
+      const cols = [0xff4fa3, 0x3ee6ff, 0xffd166, 0x7ee07a, 0xb36bff, 0xff8a1a];
+      for (let i = 0; i < 9; i++) {
+        const bal = new THREE.Group();
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 16), new THREE.MeshPhysicalMaterial({ color: cols[i % cols.length], roughness: 0.25, clearcoat: 1 }));
+        b.scale.y = 1.15;
+        const str = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 1.0, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        str.position.y = -0.62;
+        bal.add(b, str);
+        bal.position.set((i % 2 ? 1 : -1) * (1.7 + (i % 3) * 0.25), 2.0 + (i % 4) * 0.18, -1.9 + (i % 3) * 0.2);
+        bal.userData.ph = i * 1.3;
+        bal.userData.y = bal.position.y;
+        g.add(bal);
+        this.balloons.push(bal);
+      }
+      const blockCols = [0xff4fa3, 0x3ee6ff, 0xffd166, 0x7ee07a];
+      for (let i = 0; i < 6; i++) {
+        const blk = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), new THREE.MeshStandardMaterial({ color: blockCols[i % 4], roughness: 0.5 }));
+        blk.position.set(-1.9 + (i % 3) * 0.17, 0.08 + Math.floor(i / 3) * 0.16, -1.3);
+        blk.rotation.y = (Math.random() - 0.5) * 0.4;
+        blk.castShadow = true;
+        g.add(blk);
+      }
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.75), new THREE.MeshStandardMaterial({ map: treeBoard() }));
+      board.position.set(-1.6, 1.75, -2.4);
+      board.rotation.y = 0.25;
+      g.add(board);
+    } else if (set === 'spinners') {
+      // a giant decorative wheel on the back wall and neon rings
+      const wheelModel = this.models['spinner-wheel'];
+      const wheel = wheelModel ? fitHeight(wheelModel.scene.clone(), 1.9) : new THREE.Group();
+      if (!wheelModel) {
+        const w = new THREE.Mesh(new THREE.CircleGeometry(0.9, 48), new THREE.MeshStandardMaterial({ map: wheelFace(3, 8), roughness: 0.5 }));
+        w.position.y = 1.0;
+        wheel.add(w);
+      }
+      wheel.position.set(-1.75, 0.2, -2.2);
+      wheel.rotation.y = 0.35;
+      shadowsOn(wheel);
+      g.add(wheel);
+      for (const [x, y, c] of [
+        [1.8, 1.9, 0xff7a1a],
+        [-0.2, 2.3, 0x3ee6ff],
+      ] as [number, number, number][]) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.025, 8, 48), new THREE.MeshBasicMaterial({ color: c, toneMapped: false }));
+        ring.position.set(x, y, -2.5);
+        g.add(ring);
+        this.spinners.push(ring);
+      }
+    } else if (set === 'rooftop') {
+      // searchlight beams sweeping the sky and a trophy on a pedestal
+      for (let i = 0; i < 3; i++) {
+        const beam = new THREE.Mesh(new THREE.ConeGeometry(0.9, 9, 24, 1, true), new THREE.MeshBasicMaterial({ color: i === 1 ? 0xffd27a : 0xb36bff, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+        beam.geometry.translate(0, -4.5, 0);
+        beam.position.set(-5 + i * 5, 0, -9);
+        beam.rotation.x = Math.PI;
+        beam.userData.ph = i * 2;
+        g.add(beam);
+        this.beams.push(beam);
+      }
+      const gold = new THREE.MeshStandardMaterial({ color: 0xffc35a, metalness: 0.95, roughness: 0.2 });
+      const cup = new THREE.Mesh(new THREE.LatheGeometry([0, 0.05, 0.1, 0.14, 0.16, 0.17].map((r, i) => new THREE.Vector2(r + (i === 0 ? 0.001 : 0), i * 0.06)), 32), gold);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, 0.25, 16), gold);
+      const pedestal = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, 0.4), new THREE.MeshStandardMaterial({ color: 0x2a1650, roughness: 0.6 }));
+      pedestal.position.y = 0.45;
+      stem.position.y = 1.02;
+      cup.position.y = 1.14;
+      const trophy = new THREE.Group();
+      trophy.add(pedestal, stem, cup);
+      trophy.position.set(-1.9, 0, -1.7);
+      shadowsOn(trophy);
+      g.add(trophy);
+    }
+  }
+
+  applyTheme(n: 1 | 2 | 3 | 4 | 5) {
+    const t = THEMES[n];
+    this.theme = t;
+    this.buildProps(t.props);
+    for (const [k, g] of this.props) g.visible = k === t.props;
+    const r = this.refs;
+    r.roof.map = stripes(t.stripeA, t.stripeB, 18);
+    r.valance.map = stripes(t.stripeA, t.stripeB, 28);
+    r.roof.needsUpdate = r.valance.needsUpdate = true;
+    r.wall.color.setHex(t.wall);
+    r.sign.map = neonSign(t.sign, t.signColor);
+    r.sign.needsUpdate = true;
+    r.boards.forEach((m, i) => {
+      m.map = chalkboard(t.boards[i]);
+      m.needsUpdate = true;
+    });
+    r.backdrop.map = backdrop(t.sky);
+    r.backdrop.needsUpdate = true;
+    r.tableTop.map = tableTop(t.cloth);
+    r.tableTop.needsUpdate = true;
+    r.tableSide.color.set(t.cloth.rim);
+    this.lights.neon.forEach((l, i) => l.color.setHex(t.neon[i]));
+    this.lights.key.color.setHex(t.keyLight);
+    this.rimLight.color.setHex(t.rim);
+    this.renderer.toneMappingExposure = t.exposure;
+    (this.dust.material as THREE.PointsMaterial).color.setHex(t.rim);
+  }
+
+  private animateAmbience(dt: number) {
+    const t = this.elapsed;
+    for (const sp of this.crowd) {
+      sp.position.y = sp.userData.base + Math.abs(Math.sin(t * 2.2 + sp.userData.ph)) * 0.05;
+      sp.material.rotation = Math.sin(t * 1.3 + sp.userData.ph) * 0.04;
+    }
+    for (const b of this.balloons) {
+      b.position.y = b.userData.y + Math.sin(t * 0.9 + b.userData.ph) * 0.06;
+      b.rotation.z = Math.sin(t * 0.7 + b.userData.ph) * 0.08;
+    }
+    for (const s of this.spinners) s.rotation.z += dt * 0.6;
+    for (const b of this.beams) if (b.userData.ph !== undefined) b.rotation.z = Math.sin(t * 0.35 + b.userData.ph) * 0.45;
+    const pos = this.dust.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      let y = pos.getY(i) + dt * 0.04;
+      if (y > 2.8) y = 0.9;
+      pos.setY(i, y);
+      pos.setX(i, pos.getX(i) + Math.sin(t * 0.5 + i) * dt * 0.02);
+    }
+    pos.needsUpdate = true;
+    for (const p of [...this.smoke]) {
+      p.t += dt;
+      p.mesh.position.addScaledVector(p.v, dt);
+      p.mesh.scale.setScalar(0.05 + p.t * 0.35);
+      (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.45 - p.t * 0.5);
+      if (p.t > 0.9) {
+        this.scene.remove(p.mesh);
+        this.smoke.splice(this.smoke.indexOf(p), 1);
+      }
+    }
+    (this.grade.uniforms.time as { value: number }).value = t;
+  }
+
+  /** A puff of sugar-smoke from the bell when the Pie-o-Matic fires. */
+  private puff(at: THREE.Vector3) {
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff4ea, transparent: true, opacity: 0.45, depthWrite: false }));
+      m.position.copy(at);
+      m.scale.setScalar(0.05);
+      this.scene.add(m);
+      this.smoke.push({ mesh: m, t: 0, v: new THREE.Vector3((Math.random() - 0.5) * 0.6, 0.3 + Math.random() * 0.4, (Math.random() - 0.5) * 0.6) });
+    }
   }
 
   /** Project a seat's face to canvas pixels (for the thought bubble). */
@@ -1208,3 +1532,51 @@ function fallbackTint(model: string) {
 function mysteryFace() {
   return wheelFace(-1, 8, '?');
 }
+
+function makeDust() {
+  const n = 160;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) pos.set([(Math.random() - 0.5) * 4.5, 0.9 + Math.random() * 1.9, -2.3 + Math.random() * 3], i * 3);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffc27a, size: 0.012, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+}
+
+function crowdTexture() {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 160;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#fff';
+  g.beginPath();
+  g.arc(32, 26, 18, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.moveTo(6, 160);
+  g.quadraticCurveTo(4, 52, 32, 48);
+  g.quadraticCurveTo(60, 52, 58, 160);
+  g.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/** Final grade: soft vignette, a touch of warmth and saturation, and fine film grain. */
+const GRADE_SHADER = {
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float time; varying vec2 vUv;
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+      c.rgb = mix(vec3(l), c.rgb, 1.12);
+      c.rgb *= vec3(1.03, 1.0, 0.98);
+      vec2 d = vUv - 0.5;
+      float v = smoothstep(0.85, 0.25, length(d * vec2(1.15, 1.0)));
+      c.rgb *= mix(0.62, 1.0, v);
+      c.rgb += (hash(vUv * 900.0 + time) - 0.5) * 0.025;
+      gl_FragColor = c;
+    }`,
+};
