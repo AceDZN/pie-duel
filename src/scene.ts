@@ -1059,9 +1059,18 @@ export class Stage {
     return V(0.62, TABLE_Y + 0.08, 0.75);
   }
 
+  /** A few frames of near-freeze on impact: the classic hit-stop that makes a splat land. */
+  private hitStop() {
+    if (this.reducedMotion) return;
+    const prev = this.tweens.timeScale;
+    this.tweens.timeScale = 0.06;
+    this.tweens.wait(90).then(() => (this.tweens.timeScale = prev === 0.06 ? 1 : prev));
+  }
+
   splatRival(seat: Seat) {
     const r = this.rivals.get(seat);
     if (!r) return;
+    this.hitStop();
     const at = r.facePos();
     this.cream.burst(at, V(0, 0, -1), 90);
     this.shake = 0.6;
@@ -1078,6 +1087,7 @@ export class Stage {
   }
 
   splatYou() {
+    this.hitStop();
     const at = this.camera.position.clone().add(V(0, -0.05, -0.2));
     this.cream.burst(at, V(0, 0, 1), 60);
     this.shake = 0.9;

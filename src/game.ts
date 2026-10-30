@@ -44,6 +44,7 @@ export class Game {
     this.stage = stage;
     this.sfx = sfx;
     sfx.setMuted(this.save.settings.muted);
+    sfx.setMusic(this.save.settings.music !== false);
     this.applyReduced(this.save.settings.reduced);
     this.bindHud();
   }
@@ -72,6 +73,7 @@ export class Game {
       ${this.save.passed[4] ? `<div class="keys">שיא לילות ברצף: ${ltr(this.save.nightBest ?? 0)}</div>` : ''}
       <div class="toggles">
         <label><input type="checkbox" id="opt-sound" ${this.save.settings.muted ? '' : 'checked'} /> צלילים</label>
+        <label><input type="checkbox" id="opt-music" ${this.save.settings.music === false ? '' : 'checked'} /> מוזיקה</label>
         <label><input type="checkbox" id="opt-reduced" ${this.save.settings.reduced ? 'checked' : ''} /> פחות תנועה</label>
       </div>
       <div class="keys"><span><kbd>1</kbd>ירי ביריב</span><span><kbd>2</kbd>ירי בעצמי</span><span><kbd>3</kbd>תאום שני</span><span><kbd>H</kbd>מד סיכויים</span><span><kbd>P</kbd>השהיה</span><span><kbd>M</kbd>צליל</span><span><kbd>F</kbd>מהירות ×2</span></div>`;
@@ -81,8 +83,15 @@ export class Game {
     const night = document.getElementById('btn-night');
     if (night) night.onclick = () => this.startNight(1);
     ($('opt-sound') as HTMLInputElement).onchange = (e) => this.setMuted(!(e.target as HTMLInputElement).checked);
+    ($('opt-music') as HTMLInputElement).onchange = (e) => {
+      const on = (e.target as HTMLInputElement).checked;
+      this.sfx.setMusic(on);
+      this.save.settings.music = on;
+      writeSave(this.save);
+    };
     ($('opt-reduced') as HTMLInputElement).onchange = (e) => this.applyReduced((e.target as HTMLInputElement).checked);
-    this.stage.setLevel('rival-bubu', 1, 'booth');
+    this.stage.setLevel('rival-bubu', 1, 'booth', 1);
+    this.sfx.music(1);
     this.stage.setHopper(1, 2);
     this.stage.frame('home', 0);
   }
@@ -203,7 +212,9 @@ export class Game {
     $('hud').classList.remove('hidden');
     $('explain').classList.add('hidden');
     $('cream-overlay').className = '';
-    this.stage.setLevel(this.level.rival.model, this.level.rival.seats, this.level.stage ?? 'booth', this.level.id >= 100 ? ((((this.level.id - 101) % 4) + 1) as 1 | 2 | 3 | 4) : this.level.booth);
+    const themeN = this.level.id >= 100 ? ((((this.level.id - 101) % 4) + 1) as 1 | 2 | 3 | 4) : this.level.booth;
+    this.stage.setLevel(this.level.rival.model, this.level.rival.seats, this.level.stage ?? 'booth', themeN);
+    this.sfx.music(themeN);
     this.stage.frame('home', 0);
     this.hp = Object.fromEntries(this.duel.players.map((p) => [p.id, p.hp]));
     this.lastOutcome = '';

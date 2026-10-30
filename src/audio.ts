@@ -1,9 +1,25 @@
 // Synthesized sound effects (WebAudio). Nothing is fetched; the context starts on the first gesture.
 
+// per-booth music: key (MIDI root), tempo, timbre — a little carnival waltz (I–IV–V–I, bass + chords + melody)
+const MUSIC: Record<number, { root: number; bpm: number; wave: OscillatorType; minor?: boolean }> = {
+  1: { root: 60, bpm: 132, wave: 'triangle' },
+  2: { root: 57, bpm: 104, wave: 'sine', minor: true },
+  3: { root: 65, bpm: 144, wave: 'square' },
+  4: { root: 62, bpm: 156, wave: 'sawtooth', minor: true },
+  5: { root: 63, bpm: 120, wave: 'triangle' },
+};
+const MELODY = [0, 4, 7, 12, 11, 7, 9, 7, 5, 4, 2, 4, 0, 2, 4, 5, 7, 9, 7, 5, 4, 2, -1, 0];
+
 export class Sfx {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private musicGain: GainNode | null = null;
+  private musicTimer = 0;
+  private musicBooth = 0;
+  private nextNote = 0;
+  private step = 0;
   muted = false;
+  musicOn = true;
 
   unlock() {
     if (this.ctx) {
@@ -15,9 +31,70 @@ export class Sfx {
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.55;
       this.master.connect(this.ctx.destination);
+      this.musicGain = this.ctx.createGain();
+      this.musicGain.gain.value = this.musicOn ? 0.16 : 0;
+      this.musicGain.connect(this.master);
     } catch {
       this.ctx = null;
     }
+    if (this.musicBooth) this.music(this.musicBooth);
+  }
+
+  setMusic(on: boolean) {
+    this.musicOn = on;
+    if (this.musicGain) this.musicGain.gain.value = on ? 0.16 : 0;
+  }
+
+  /** Start (or switch) the booth's waltz; a lookahead scheduler keeps it seamless. */
+  music(booth: number) {
+    this.musicBooth = booth;
+    if (!this.ctx || !this.musicGain) return;
+    window.clearInterval(this.musicTimer);
+    this.nextNote = this.ctx.currentTime + 0.1;
+    this.step = 0;
+    const cfg = MUSIC[booth] ?? MUSIC[1];
+    const beat = 60 / cfg.bpm;
+    const third = cfg.minor ? 3 : 4;
+    const prog = [0, 5, 7, 0];
+    const midi = (n: number) => 440 * 2 ** ((n - 69) / 12);
+    const note = (freq: number, t: number, dur: number, vol: number, wave: OscillatorType) => {
+      const o = this.ctx!.createOscillator();
+      const g = this.ctx!.createGain();
+      o.type = wave;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g);
+      g.connect(this.musicGain!);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    };
+    const tick = () => {
+      if (!this.ctx) return;
+      while (this.nextNote < this.ctx.currentTime + 0.25) {
+        const bar = Math.floor(this.step / 3) % 8;
+        const b = this.step % 3;
+        const chord = cfg.root + prog[Math.floor(bar / 2) % 4];
+        const t = this.nextNote;
+        if (b === 0) note(midi(chord - 24), t, beat * 0.9, 0.5, 'triangle');
+        else {
+          note(midi(chord - 12 + third), t, beat * 0.5, 0.18, cfg.wave === 'sawtooth' ? 'square' : cfg.wave);
+          note(midi(chord - 12 + 7), t, beat * 0.5, 0.18, cfg.wave === 'sawtooth' ? 'square' : cfg.wave);
+        }
+        const m = MELODY[this.step % MELODY.length] + (cfg.minor && [4, 9, 11].includes(((MELODY[this.step % MELODY.length] % 12) + 12) % 12) ? -1 : 0);
+        note(midi(cfg.root + 12 + m), t, beat * 0.8, 0.22, cfg.wave);
+        this.nextNote += beat;
+        this.step++;
+      }
+    };
+    tick();
+    this.musicTimer = window.setInterval(tick, 90);
+  }
+
+  stopMusic() {
+    window.clearInterval(this.musicTimer);
+    this.musicBooth = 0;
   }
 
   setMuted(m: boolean) {
