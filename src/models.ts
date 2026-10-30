@@ -2,21 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
-export const MODEL_FILES = ['rival-bubu', 'rival-rina', 'rival-twin', 'rival-robo', 'rival-mo', 'pie-o-matic', 'cream-pie', 'prize-shelf', 'spinner-wheel'] as const;
-export type ModelName = (typeof MODEL_FILES)[number];
+// Big Mo has no model of his own yet (he is a recoloured Bubu), so 'rival-mo' is a name the stage asks for but isn't fetched
+export const MODEL_FILES = ['rival-bubu', 'rival-rina', 'rival-twin', 'rival-robo', 'pie-o-matic', 'cream-pie', 'prize-shelf'] as const;
+export type ModelName = (typeof MODEL_FILES)[number] | 'rival-mo';
 export type Models = Partial<Record<ModelName, GLTF>>;
 
 export async function loadModels(onProgress?: (done: number, total: number) => void): Promise<Models> {
   const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
-  const draco = new DRACOLoader();
-  draco.setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
-  loader.setDRACOLoader(draco);
+  loader.setMeshoptDecoder(MeshoptDecoder); // none of the shipped GLBs need Draco
   let done = 0;
   const base = import.meta.env.BASE_URL;
   const out: Models = {};
+  // add 'rival-mo.glb' to MODEL_FILES once it exists in public/models/
   await Promise.all(
     MODEL_FILES.map(
       (k) =>

@@ -98,5 +98,5 @@ Generation 30. 18,026 faces. Blank sign board for a procedural Hebrew booth name
 - **Big Mo** (`rival-mo`): no model (generation budget spent). In game he is `rival-bubu` tinted lavender ("sequined") and scaled to 1.85 m, with the same rig and clips. A dedicated model needs one more Tripo generation + rig (prompt below in this file).
 - **Pie-o-Matic**: rotated +90° so the horn faces the swivel's forward axis, scaled to 0.74 m. Its dome has pies baked in, so the real mix is shown procedurally in a clear loading jar on top of the dome (and in the HUD counter). Procedural fallback exists in `src/scene.ts`.
 - **Cream pie**: squashed to 0.6 on y and used for every projectile and counter-pie.
-- **Prize shelf**: behind the rival. **Spinner wheel** and **booth stall**: not used in gameplay (the probability wheels must be exact and are procedural canvas textures); kept for a future midway scene.
+- **Prize shelf**: behind the rival. **Spinner wheel** and **booth stall**: moved to `assets-unused/` (not shipped) — not used in gameplay (the probability wheels must be exact and are procedural canvas textures); kept for a future midway scene.
 - Procedural (exact math state, never models): the shell counter, odds meter, probability scale, spinner wheels, coin, area model, tree diagram, two-way table and test-fire bar chart.
