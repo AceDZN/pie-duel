@@ -6,6 +6,8 @@ export class Tweens {
   private jobs: Job[] = [];
   /** slow-motion factor for scaled jobs (1 = normal). */
   timeScale = 1;
+  /** overall animation speed (the player's ×2 toggle). */
+  speed = 1;
   now = 0;
 
   tween(durMs: number, fn?: (k: number) => void, scaled = true): Promise<void> {
@@ -24,6 +26,7 @@ export class Tweens {
   }
 
   update(dtMs: number) {
+    dtMs *= this.speed;
     this.now += dtMs;
     const jobs = this.jobs;
     this.jobs = [];

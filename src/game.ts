@@ -8,7 +8,7 @@ import { generateNight } from './core/endless';
 import type { Stage, Seat } from './scene';
 import type { Sfx } from './audio';
 import { loadSave, logEvent, writeSave, type Save } from './save';
-import { BET_NAME, CARD_INFO, DUD_SVG, FACE_YOU, MYSTERY_SVG, PIE_SVG, RIVAL_FACE, RULES_HTML, fr, ltr } from './text';
+import { BET_NAME, CARD_INFO, count, rivalVerb, DUD_SVG, FACE_YOU, MYSTERY_SVG, PIE_SVG, RIVAL_FACE, RULES_HTML, fr, ltr } from './text';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -73,7 +73,7 @@ export class Game {
         <label><input type="checkbox" id="opt-sound" ${this.save.settings.muted ? '' : 'checked'} /> צלילים</label>
         <label><input type="checkbox" id="opt-reduced" ${this.save.settings.reduced ? 'checked' : ''} /> פחות תנועה</label>
       </div>
-      <div class="keys"><span><kbd>1</kbd>ירי ביריב</span><span><kbd>2</kbd>ירי בעצמי</span><span><kbd>3</kbd>תאום שני</span><span><kbd>H</kbd>מד סיכויים</span><span><kbd>P</kbd>השהיה</span><span><kbd>M</kbd>צליל</span></div>`;
+      <div class="keys"><span><kbd>1</kbd>ירי ביריב</span><span><kbd>2</kbd>ירי בעצמי</span><span><kbd>3</kbd>תאום שני</span><span><kbd>H</kbd>מד סיכויים</span><span><kbd>P</kbd>השהיה</span><span><kbd>M</kbd>צליל</span><span><kbd>F</kbd>מהירות ×2</span></div>`;
     $('btn-play').onclick = () => this.startLevel(next);
     $('btn-levels').onclick = () => this.showSelect();
     $('btn-how').onclick = () => this.showHow();
@@ -158,7 +158,14 @@ export class Game {
     this.sfx.unlock();
     this.level = def ?? levelById(id);
     this.attempt = (this.attempt && this.duel?.level.id === id ? this.attempt : 0) + 1;
-    const seed = this.attempt === 1 ? this.level.seed : this.level.seed + 7919 * this.attempt + this.seedBump++;
+    // only the very first play of a level uses its authored (tutorial) seed; every replay is a fresh shuffle
+    const plays = this.save.plays ?? (this.save.plays = {});
+    const fresh = (Math.random() * 0x7fffffff) ^ (Date.now() & 0xffff) ^ (this.seedBump++ * 7919);
+    const seed = def || plays[id] ? fresh >>> 0 : this.level.seed;
+    if (!def) {
+      plays[id] = (plays[id] ?? 0) + 1;
+      writeSave(this.save);
+    }
     this.duel = new Duel(this.level, seed, this.save.carry[id] ?? []);
     $('title').classList.add('hidden');
     $('select').classList.add('hidden');
@@ -200,6 +207,9 @@ export class Game {
     const d = this.duel;
     this.animating = true;
     this.setActions('none');
+    // the meter describes your next decision only; hide the stale value while the show plays
+    $('meter').classList.add('off');
+    $('meter-frac').textContent = '?';
     try {
       for (let i = 0; i < events.length; i++) {
         await this.play(events[i], events, i);
@@ -264,10 +274,11 @@ export class Game {
       case 'hit':
         return this.showHit(e);
       case 'call':
-        if (e.exact) {
+        if (e.exact && e.paid) {
           this.toast(`ניחוש מדויק! ${ltr(str(e.value))} · +2 ז׳יטונים`);
           this.sfx.coin();
-        } else this.toast(`הניחוש: ${ltr(str(e.value))} · הסיכוי היה ${ltr(str(e.truth))}`);
+        } else if (e.exact) this.toast(`ניחוש מדויק ${ltr(str(e.value))} — אבל המד היה גלוי, אז בלי ז׳יטונים`);
+        else this.toast(`הניחוש: ${ltr(str(e.value))} · הסיכוי היה ${ltr(str(e.truth))}`);
         this.clearCall();
         return;
       case 'chips':
@@ -302,7 +313,7 @@ export class Game {
       st.setHopper(hidden ? 0 : c.pies, hidden ? 0 : c.duds, hidden ? c.pies + c.duds : 0);
       this.renderMag();
       this.renderSide();
-      this.banner(hidden ? `טעינה: ${ltr(c.pies)} עוגות מתוך ${ltr(c.pies + c.duds)}` : `טעינה: ${ltr(c.pies)} ${c.pies === 1 ? 'עוגה' : 'עוגות'} · ${ltr(c.duds)} ${c.duds === 1 ? 'ריק' : 'ריקים'}`, 'הסדר מעורבב ונסתר');
+      this.banner(hidden ? `טעינה: ${count(c.pies, 'עוגה אחת', 'עוגות')} מתוך ${ltr(c.pies + c.duds)}` : `טעינה: ${count(c.pies, 'עוגה אחת', 'עוגות')} · ${count(c.duds, 'ריק אחד', 'ריקים')}`, 'הסדר מעורבב ונסתר');
       this.sfx.whoosh();
       await st.tweens.wait(900);
       await st.shuffleHopper();
@@ -311,7 +322,7 @@ export class Game {
       st.showWheels('spin', load.pie);
       this.renderMag();
       this.renderSide();
-      this.banner(`סביבון: ${fr(load.pie.n, load.pie.d)} מהגלגל עוגות`, `עם החזרה — הסיכוי זהה בכל סיבוב · ${ltr(load.spinsLeft)} סיבובים`);
+      this.banner(`סביבון: ${fr(load.pie.n, load.pie.d)} מהגלגל עוגות`, `עם החזרה — הסיכוי זהה בכל סיבוב · ${count(load.spinsLeft, 'סיבוב אחד', 'סיבובים')}`);
       this.sfx.whoosh();
       await st.tweens.wait(1500);
     } else if (load.type === 'coin') {
@@ -338,14 +349,17 @@ export class Game {
 
   private async showThought(e: Extract<DuelEvent, { t: 'thought' }>) {
     const name = this.level.rival.seats === 2 ? (e.who === 'r1' ? 'תאום א׳' : 'תאום ב׳') : this.level.rival.name;
-    const p = e.p ? ltr(str(e.p)) : '';
+    // on no-meter levels the bubble mustn't work as a meter, so it says the plan without the number
+    const showP = this.level.meter.kind !== 'off' && this.duel?.load.type !== 'mystery';
+    const p = e.p && showP ? ltr(str(e.p)) : '';
+    const likely = e.p && cmp(e.p, HALF) < 0 ? 'dud' : 'pie';
     const text: Record<string, string> = {
       always: 'אני תמיד יורה בך! חה!',
-      odds: e.p && cmp(e.p, HALF) < 0 ? `סיכוי לעוגה ${p}… אירה בעצמי.` : `סיכוי לעוגה ${p}. אליך!`,
+      odds: showP ? (likely === 'dud' ? `סיכוי לעוגה ${p}… אירה בעצמי.` : `סיכוי לעוגה ${p}. אליך!`) : likely === 'dud' ? 'הממ… אני מעז. אירה בעצמי!' : 'הממ… אליך!',
       dudDue: 'שתי עוגות ברצף… עכשיו בטוח יוצא ריק! אירה בעצמי.',
       pieDue: 'שני ריקים ברצף… עכשיו מגיעה עוגה! אליך!',
-      peek: `${p}? לא בטוח… אציץ.`,
-      double: `לפחות עוגה אחת משתיים: ${p}. כפולה!`,
+      peek: showP ? `${p}? לא בטוח… אציץ.` : 'לא בטוח… אציץ.',
+      double: showP ? `לפחות עוגה אחת משתיים: ${p}. כפולה!` : 'כפולה!',
     };
     const th = $('thought');
     th.innerHTML = `<b>${name}:</b> ${text[e.key]}`;
@@ -356,7 +370,7 @@ export class Game {
     th.style.top = `${Math.max(90, pos.y - 150)}px`;
     th.style.transform = 'none';
     if (e.key === 'dudDue' || e.key === 'pieDue') this.stage.anim(e.who as Seat, 'laugh');
-    await this.stage.tweens.wait(e.key === 'dudDue' || e.key === 'pieDue' ? 1500 : 1000);
+    await this.stage.tweens.wait(e.key === 'dudDue' || e.key === 'pieDue' ? 1400 : 750);
   }
 
   private async showShot(e: Extract<DuelEvent, { t: 'shot' }>, next?: DuelEvent) {
@@ -382,14 +396,15 @@ export class Game {
       this.sfx.spin(1300);
       await st.spinWheel(e.wheel === 'a' ? 0 : 1, e.shell.kind === 'pie', e.wheel === 'a' ? L.a : L.b);
     } else {
-      this.sfx.drumroll(this.stage.reducedMotion ? 100 : 650);
-      await st.tweens.wait(this.stage.reducedMotion ? 100 : 650);
+      this.sfx.drumroll(this.stage.reducedMotion ? 100 : 450);
+      await st.tweens.wait(this.stage.reducedMotion ? 100 : 450);
       st.removeFromHopper(e.shell.kind);
     }
     if (L.type === 'mag' || (L.type === 'spin' && false)) this.dec(e.shell.kind);
     this.renderMag();
     this.sfx.whoosh();
-    const slow = e.shell.kind === 'pie' && !(next && next.t === 'shot');
+    // slow motion is the payoff of your own pie on a rival; everything else plays at speed
+    const slow = e.shell.kind === 'pie' && yours && target !== 'you' && !(next && next.t === 'shot');
     if (target !== 'you') st.frame(target, 700);
     await st.shoot(e.shell.kind, target, slow);
     if (e.shell.kind === 'pie') {
@@ -404,7 +419,7 @@ export class Game {
       this.sfx.pop();
     }
     this.lastOutcome = `${e.shooter}→${e.target}:${e.shell.kind}`;
-    await st.tweens.wait(550);
+    await st.tweens.wait(400);
   }
 
   private async showHit(e: Extract<DuelEvent, { t: 'hit' }>) {
@@ -423,7 +438,7 @@ export class Game {
       await st.lob(from, who, 700);
       this.splat(who);
     } else if (e.cause === 'dare') {
-      this.toast(who === 'you' ? `${this.level.rival.name} העז — עוגת בונוס אליך!` : 'אומץ! עוגת בונוס מהקהל 🎪');
+      this.toast(who === 'you' ? `${this.seatName(this.lastShooter())} ${this.level.rival.seats === 2 ? 'העז' : rivalVerb(this.level.rival.model, 'העז', 'העזה', 'העזו')} — עוגת בונוס אליך!` : 'אומץ! עוגת בונוס מהקהל 🎪');
       this.sfx.cheer();
       const from = who === 'you' ? st.rivalHandPos(this.lastShooter() ?? 'r1') : st.dareTrayPos();
       st.frame(who === 'you' ? 'home' : who, 400);
@@ -440,7 +455,7 @@ export class Game {
     this.hp[e.who] = e.hp;
     this.renderHp(e.who);
     if (e.who !== 'you' && e.hp === 0) st.anim(who, 'defeat');
-    await st.tweens.wait(500);
+    await st.tweens.wait(350);
     st.frame('home', 600);
   }
 
@@ -451,6 +466,11 @@ export class Game {
   }
   private lastShooter(): Seat | null {
     return (this.lastOutcome.split('→')[0] as Seat) || null;
+  }
+
+  private seatName(seat: Seat | null) {
+    if (this.level.rival.seats === 2) return seat === 'r2' ? 'תאום ב׳' : 'תאום א׳';
+    return this.level.rival.name;
   }
 
   private splat(who: Seat) {
@@ -475,22 +495,44 @@ export class Game {
   private async showExplain(e: Extract<DuelEvent, { t: 'explain' }>) {
     const s = this.decisionSnapshot;
     const p = e.p;
+    if (e.key === 'lucky') {
+      // a wrong call that got lucky: a short, non-blocking note
+      const side = cmp(p, HALF) > 0 ? 'לעוגה' : 'לריק';
+      this.toast(`מזל! אבל הסיכוי ${side} היה ${ltr(str(cmp(p, HALF) > 0 ? p : complement(p)))} — ההימור ההפוך היה טוב יותר`);
+      this.lastExplain = e.key;
+      await this.stage.tweens.wait(1200);
+      return;
+    }
+    if (e.key === 'ejectBetter') {
+      this.toast(`בדיוק ${ltr('1/2')} וקלף פליטה ביד: פליטה הייתה נותנת מידע לפני הירייה`);
+      this.lastExplain = e.key;
+      await this.stage.tweens.wait(1400);
+      return;
+    }
+    // let the cream on your screen clear before the card
+    await this.stage.tweens.wait(900);
     const raw = s && this.duel?.load.type === 'mag' ? fr(s.pies, s.total) : ltr(str(p));
     const q = complement(p);
     let big = raw;
+    let icon = '🥧';
+    let caption = 'הסתברות לעוגה';
     let body = '';
     if (e.key === 'selfOnPies') {
-      body = s && this.duel?.load.type === 'mag' ? `נשארו ${ltr(s.pies)} עוגות מתוך ${ltr(s.total)} — סיכוי של ${raw} לעוגה, יותר מחצי. עדיף היה לירות ביריב.` : `הסיכוי לעוגה היה ${ltr(str(p))} — יותר מחצי. עדיף היה לירות ביריב.`;
+      body = s && this.duel?.load.type === 'mag' ? `${s.pies === 1 ? 'נשארה' : 'נשארו'} ${count(s.pies, 'עוגה אחת', 'עוגות')} מתוך ${ltr(s.total)} — סיכוי של ${raw} לעוגה, יותר מחצי. עדיף היה לירות ביריב.` : `הסיכוי לעוגה היה ${ltr(str(p))} — יותר מחצי. עדיף היה לירות ביריב.`;
     } else if (e.key === 'rivalOnDuds') {
-      body = `הסיכוי לעוגה היה רק ${raw}, ולריק ${ltr(str(q))} (המאורע המשלים). עדיף היה לירות בעצמך ולקבל בונוס אומץ.`;
+      body = `הסיכוי לעוגה היה רק ${raw}, ולריק ${ltr(str(q))} — המאורע המשלים. עדיף היה לירות בעצמך ולקבל בונוס אומץ.`;
       big = ltr(str(q));
+      icon = '🎉';
+      caption = 'הסתברות לריק';
     } else {
       body = `בחירה נכונה! הסיכוי היה לטובתך (${ltr(str(cmp(p, HALF) > 0 ? p : q))}), אבל גם סיכוי טוב לא מבטיח. החלטות טובות הן מה שנספר לכוכבים.`;
       big = '👍';
+      icon = '🍀';
+      caption = '';
     }
     this.lastExplain = e.key;
     const box = $('explain');
-    box.innerHTML = `<div class="row"><span class="big">${big}</span><span style="font-size:3em">${e.key === 'unlucky' ? '🍀' : '🥧'}</span></div><p>${body}</p><button class="btn gold" id="explain-ok">ממשיכים</button>`;
+    box.innerHTML = `<div class="row"><span class="big">${big}</span><span style="font-size:3em">${icon}</span></div>${caption ? `<div class="cap">${caption}</div>` : ''}<p>${body}</p><button class="btn gold" id="explain-ok">ממשיכים</button>`;
     box.classList.remove('hidden');
     await new Promise<void>((resolve) => {
       const done = () => {
@@ -690,13 +732,22 @@ export class Game {
     }
     const stars = `<div class="stars-big">${'★'.repeat(r.stars)}<span class="off">${'★'.repeat(3 - r.stars)}</span></div>`;
     const title = r.won ? 'ניצחת! 🥧' : r.passed ? 'הפסדת בקרב — אבל עברת!' : 'הקצפת ניצחה הפעם…';
+    const L0 = d.level.loads[0];
+    const hint =
+      L0.type === 'mystery'
+        ? `השוו את השכיחות היחסית מירי הניסיון ל־${ltr('1/2')}. יותר ניסויים — הערכה מדויקת יותר.`
+        : L0.type === 'spin' || L0.type === 'bet' || L0.type === 'coin'
+          ? `בגלגל הסיכוי לא משתנה אחרי רצף. השוו את הסיכוי לעוגה ל־${ltr('1/2')}.`
+          : `ספרו כמה עוגות נשארו מתוך כמה פגזים, והשוו ל־${ltr('1/2')}.`;
     const why = r.won
-      ? `${this.level.rival.name} מכוסה בקצפת.`
+      ? `${this.level.rival.name} ${rivalVerb(this.level.rival.model, 'מכוסה', 'מכוסה', 'מכוסים')} בקצפת.`
       : r.passed
         ? 'המזל לא היה איתך, אבל ההחלטות שלך התאימו לסיכויים — וזה מה שקובע.'
-        : r.accuracy >= 0.8
-          ? 'ההחלטות שלך התאימו לסיכויים, אבל המשחק נגמר לפני שנשאלו שני סוגי השאלות (עוגה סבירה וריק סביר). ההחלטות נשמרות — עוד סיבוב אחד!'
-          : 'נסו שוב: ספרו כמה עוגות נשארו מתוך כמה פגזים, והשוו ל־' + ltr('1/2') + '.';
+        : r.accuracy >= 0.8 && !r.varied
+          ? 'עדיין לא ראינו אותך בוחר נכון בשני המצבים: כשעוגה סבירה יותר וכשריק סביר יותר. ההחלטות נשמרות, והסיבוב הבא יבדוק את מה שחסר.'
+          : r.accuracy >= 0.8
+            ? 'ההחלטות שלך התאימו לסיכויים, אבל היו מעט מדי כדי לבדוק. הן נשמרות — עוד סיבוב אחד!'
+            : `נסו שוב: ${hint}`;
     const next = endless ? null : LEVELS.find((l) => l.id === id + 1);
     const wrong = d.decisions.filter((x) => !x.correct).slice(-1)[0];
     const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.pSeen))} ובחרת ${wrong.choice === 'self' ? 'לירות בעצמך' : wrong.choice === 'rival' ? 'לירות ביריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
@@ -717,6 +768,8 @@ export class Game {
   private bindHud() {
     $('btn-pause').onclick = () => this.togglePause();
     $('btn-sound').onclick = () => this.setMuted(!this.sfx.muted);
+    $('btn-speed').onclick = () => this.setFast(!this.save.settings.fast);
+    this.setFast(!!this.save.settings.fast);
     $('btn-meter').onclick = () => {
       if (this.duel?.useMeter()) {
         this.sfx.click();
@@ -753,6 +806,7 @@ export class Game {
       const k = ev.key.toLowerCase();
       if (k === 'p' || k === 'escape') return this.togglePause();
       if (k === 'm') return this.setMuted(!this.sfx.muted);
+      if (k === 'f') return this.setFast(!this.save.settings.fast);
       if (this.ui === 'intro' && (k === 'enter' || k === ' ')) return $('goal-go')?.click();
       if (!$('explain').classList.contains('hidden') && (k === 'enter' || k === ' ')) return $('explain-ok')?.click();
       const d = this.duel;
@@ -790,6 +844,14 @@ export class Game {
     this.save.settings.muted = m;
     writeSave(this.save);
     $('btn-sound').setAttribute('aria-pressed', String(!m));
+  }
+
+  /** ×2 animation speed for players who want less watching between decisions. */
+  setFast(on: boolean) {
+    this.save.settings.fast = on;
+    this.stage.tweens.speed = on ? 2 : 1;
+    writeSave(this.save);
+    $('btn-speed').setAttribute('aria-pressed', String(on));
   }
 
   applyReduced(on: boolean) {
@@ -888,7 +950,7 @@ export class Game {
       let html = '';
       if (unknown) {
         for (let i = 0; i < total; i++) html += `<span class="slot">${MYSTERY_SVG}</span>`;
-        sub.innerHTML = `${ltr(pies)} עוגות מתוך ${ltr(total)} פגזים · כמה ריקים?`;
+        sub.innerHTML = total ? `${count(pies, 'עוגה אחת', 'עוגות')} מתוך ${ltr(total)} פגזים · כמה ריקים?` : '';
       } else {
         // the order is hidden, so show the counts: pies first, then duds; a peeked next shell is marked
         const next = yourTurn && L.known[0] ? L.shells[0].kind : null;
@@ -911,16 +973,16 @@ export class Game {
     } else if (L.type === 'spin' || L.type === 'bet') {
       title.textContent = L.type === 'bet' ? 'סבב הימורים' : 'סביבון (עם החזרה)';
       slots.innerHTML = `<span class="slot">${PIE_SVG}</span><span style="align-self:center;font-weight:800;font-size:1.4em">${fr(L.pie.n, L.pie.d)}</span><span class="slot">${DUD_SVG}</span><span style="align-self:center;font-weight:800;font-size:1.4em">${ltr(str(complement(L.pie)))}</span>`;
-      sub.innerHTML = L.type === 'spin' ? `נשארו ${ltr(L.spinsLeft)} סיבובים · אחרי רצף הסיכוי לא משתנה` : 'שני סיבובים בלתי תלויים';
+      sub.innerHTML = L.type === 'spin' ? `${L.spinsLeft === 1 ? 'נשאר' : 'נשארו'} ${count(L.spinsLeft, 'סיבוב אחד', 'סיבובים')} · אחרי רצף הסיכוי לא משתנה` : 'שני סיבובים בלתי תלויים';
     } else if (L.type === 'coin') {
       title.textContent = 'מטבע ושני גלגלים';
       slots.innerHTML = `<span style="font-weight:700">A: ${fr(L.a.n, L.a.d)}</span>&nbsp;&nbsp;<span style="font-weight:700">B: ${fr(L.b.n, L.b.d)}</span>&nbsp;&nbsp;<span>P(A) = ${ltr(str(L.coin))}</span>`;
-      sub.innerHTML = `נשארו ${ltr(L.spinsLeft)} יריות`;
+      sub.innerHTML = `${L.spinsLeft === 1 ? 'נשארה' : 'נשארו'} ${count(L.spinsLeft, 'ירייה אחת', 'יריות')}`;
     } else if (L.type === 'mystery') {
       title.textContent = 'התותח המסתורי';
       const pies = L.tests.filter(Boolean).length;
       slots.innerHTML = `<span class="slot">${MYSTERY_SVG}</span>`;
-      sub.innerHTML = d.phase === 'test' ? `ירי ניסיון: ${ltr(L.tests.length)} מתוך ${ltr(L.maxTests)} · עוגות: ${ltr(pies)}` : `שכיחות יחסית מהניסוי: ${fr(pies, Math.max(1, L.tests.length))} · נשארו ${ltr(L.spinsLeft)} יריות`;
+      sub.innerHTML = d.phase === 'test' ? `ירי ניסיון: ${ltr(L.tests.length)} מתוך ${ltr(L.maxTests)} · עוגות: ${ltr(pies)}` : `שכיחות יחסית מהניסוי: ${fr(pies, Math.max(1, L.tests.length))} · ${L.spinsLeft === 1 ? 'נשארה' : 'נשארו'} ${count(L.spinsLeft, 'ירייה אחת', 'יריות')}`;
     }
   }
 

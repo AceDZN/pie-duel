@@ -43,3 +43,10 @@ export const RULES_HTML = `
   <li>הסתברות לעוגה גדולה מ־${ltr('1/2')}? ירו ביריב. הסתברות לריק גדולה יותר? ירו בעצמכם.</li>
   <li>עוברים שלב בניצחון — <b>או</b> ב־${ltr('80%')} החלטות נכונות לפי הסיכויים. מזל רע לא עוצר אתכם.</li>
 </ul>`;
+
+/** "עוגה אחת" / "3 עוגות": Hebrew counts with the number in an LTR isolate. */
+export const count = (n: number, one: string, many: string) => (n === 1 ? one : `${ltr(n)} ${many}`);
+
+const GENDER: Record<string, 'm' | 'f' | 'pl'> = { 'rival-bubu': 'm', 'rival-rina': 'f', 'rival-twin': 'pl', 'rival-robo': 'm', 'rival-mo': 'm' };
+/** Pick the verb form that agrees with the rival (Grandma Rina is feminine, the Twins plural). */
+export const rivalVerb = (model: string, m: string, f: string, pl: string) => ({ m, f, pl })[GENDER[model] ?? 'm'];

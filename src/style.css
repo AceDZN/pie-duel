@@ -96,6 +96,12 @@ bdi[dir='ltr'] {
 .round[aria-pressed='false'] .wave {
   display: none;
 }
+#btn-speed[aria-pressed='true'] {
+  background: var(--amber);
+}
+#btn-speed[aria-pressed='true'] svg {
+  fill: #3a2400;
+}
 .chips-pill {
   height: calc(var(--u) * 7.2);
   min-height: 40px;
@@ -1167,6 +1173,46 @@ kbd {
 }
 
 @container (max-aspect-ratio: 4/5) {
+  .actions {
+    gap: 6px;
+  }
+  .fire.small {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 13px;
+    min-height: 50px;
+    padding: 0 4px;
+    gap: 4px;
+  }
+  .fire.small .ico {
+    min-width: 20px;
+    min-height: 20px;
+    width: 20px;
+    height: 20px;
+  }
+  .fire.small kbd {
+    display: none;
+  }
+  .hp-row .pies {
+    flex-wrap: wrap;
+    max-width: 62%;
+  }
+  .hp-pie {
+    min-width: 13px;
+    min-height: 11px;
+    width: 13px;
+    height: 11px;
+  }
+  .toast {
+    white-space: normal;
+    max-width: 90%;
+    text-align: center;
+  }
+  .side-panel {
+    width: 52%;
+    font-size: 11px;
+    padding: 6px;
+  }
   .meter {
     top: calc(var(--u) * 52);
     transform: none;
@@ -1308,3 +1354,10 @@ kbd {
   50% { transform: translateY(-5px); }
 }
 #btn-go small { font-size: 0.45em; opacity: 0.85; }
+
+.explain .cap {
+  font-weight: 700;
+  color: #8a5a2b;
+  font-size: max(13px, calc(var(--u) * 2.6));
+  margin-top: -0.4em;
+}

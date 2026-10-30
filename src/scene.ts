@@ -951,7 +951,7 @@ export class Stage {
     this.scene.add(proj);
     this.shake = Math.max(this.shake, 0.4);
     for (const b of this.bulbs) (b.material as THREE.MeshBasicMaterial).color.set(0xffffff);
-    if (slow && !this.reducedMotion) this.tweens.timeScale = 0.32;
+    if (slow && !this.reducedMotion) this.tweens.timeScale = 0.45;
     const dist = from.distanceTo(to);
     const arc = seat === 'you' ? 0.12 : 0.28;
     await this.tweens.tween((260 + dist * 260) / speed, (k) => {

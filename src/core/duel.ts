@@ -713,10 +713,11 @@ export function evaluate(all: Decision[], won: boolean, over: boolean, current: 
   const shown = new Set(decisions.filter((d) => d.correct).map((d) => d.choice));
   const varied = read(1) && read(-1) && [...strictlyBest].every((c) => shown.has(c));
   const oddsRead = judged.length >= 5 && accuracy >= 0.8 && varied;
-    const passed = won || oddsRead;
-    const stars = !passed ? 0 : oddsRead && accuracy >= 0.95 ? 3 : oddsRead ? 2 : 1;
+  const passed = won || oddsRead;
+  // stars measure decisions, not luck: the same accuracy earns the same stars whether you won or passed by odds
+  const stars = !passed ? 0 : accuracy >= 0.95 ? 3 : accuracy >= 0.8 ? 2 : 1;
   const matchCorrect = current.filter((d) => d.correct).length;
-  return { total, correct, accuracy, won, oddsRead, passed, stars, over, matchDecisions: current.length, matchCorrect };
+  return { total, correct, accuracy, won, oddsRead, varied, judged: judged.length, passed, stars, over, matchDecisions: current.length, matchCorrect };
 }
 
 function preludeFor(level: LevelDef, carry: Decision[]): Load | null {
