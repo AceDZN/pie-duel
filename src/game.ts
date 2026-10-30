@@ -293,6 +293,7 @@ export class Game {
     const d = this.duel;
     this.animating = true;
     this.setActions('none');
+    $('coach').classList.add('hidden');
     // the meter describes your next decision only; hide the stale value while the show plays
     $('meter').classList.add('off');
     $('meter-frac').textContent = '?';
@@ -673,6 +674,28 @@ export class Game {
 
   // ================================================================= your turn
 
+  /** Tutorial coaching in booth 1: say what the fraction means and pulse the matching button (never forced). */
+  private coach() {
+    const d = this.duel!;
+    const c = $('coach');
+    document.querySelectorAll('.fire.pulse').forEach((b) => b.classList.remove('pulse'));
+    c.classList.add('hidden');
+    if (d.level.booth !== 1 || d.level.expert || d.phase !== 'decide' || d.load.type !== 'mag') return;
+    const r = this.rawP();
+    let msg = '';
+    let btn = '';
+    if (d.level.id === 1 && d.decisions.length === 0)
+      msg = `${count(r.n, 'עוגה אחת', 'עוגות')} מתוך ${ltr(r.d)} פגזים: הסיכוי לעוגה ${fr(r.n, r.d)} — פחות מחצי. ריק סביר יותר, אז ירו <b>בעצמכם</b> וקבלו בונוס אומץ!`;
+    else if (r.d > 0 && r.n === r.d && d.level.id <= 2) msg = `נשארו רק עוגות: ${fr(r.n, r.d)} = 1, <b>ודאי</b>. ירו ב${this.level.rival.name}!`;
+    else if (r.d > 0 && r.n === 0 && d.level.id <= 2) msg = `לא נשארה אף עוגה: ${fr(0, r.d)} = 0, <b>בלתי אפשרי</b> לחטוף. ירו בעצמכם!`;
+    else if (d.level.id === 1 && d.decisions.length === 1) msg = `עכשיו ${fr(r.n, r.d)}. ${2 * r.n > r.d ? 'יותר מחצי — ירו ביריב.' : 2 * r.n < r.d ? 'פחות מחצי — ירו בעצמכם.' : 'בדיוק חצי — שתי הבחירות טובות.'}`;
+    if (!msg) return;
+    btn = 2 * r.n > r.d ? '.fire.rival' : 2 * r.n < r.d ? '.fire.self' : '';
+    c.innerHTML = `💡 ${msg}`;
+    c.classList.remove('hidden');
+    if (btn) document.querySelector(btn)?.classList.add('pulse');
+  }
+
   private readyForYou() {
     const d = this.duel!;
     if (d.phase === 'test') this.setActions('test');
@@ -683,6 +706,7 @@ export class Game {
     this.renderScale();
     this.renderHand();
     this.renderSide();
+    this.coach();
     this.stage.aim(d.aliveRivals()[0]?.id as Seat, 400);
   }
 
