@@ -47,3 +47,13 @@ Actual: `docs/captures/*.jpg`, taken by `tests/capture.mjs` in headless Chrome a
 ## Remaining deviations we accept for now
 
 1–8 above. A dedicated Big Mo model and painted card art would close the largest gaps (each needs Tripo credits or more art time).
+
+## Polish pass (31 Oct 2026)
+
+Per-level gallery of real first decisions: `docs/captures/levels/L01–L17.jpg` (`node tests/tour.mjs`); intro screens `docs/captures/00a-booth-card.jpg`, `00b-versus.jpg`.
+
+- **Per-booth art direction** — each booth is its own place: bakery (red/cream, pie stand), card parlor (purple velvet, green felt, card lamp), toy stall (teal, balloons, chalk tree), wheels carnival (orange/night, giant wheel), rooftop (skyline, moon, searchlights, trophy). Background stalls (Tripo booth model), a swaying crowd, dust motes, a rim spotlight on the rival, a final colour grade (vignette, grain).
+- **Rivals** reframed so they stand clear of the Pie-o-Matic, enlarged where they read small, reaction clips capped so they're idle at decision time; cream now sticks on the face (the Mixamo head bone sits at the neck of these big-headed characters — the anchor is moved up to the face and out to the skin).
+- **Wheels** on tall stands at the booth's right side; the coin and area-model panel stay clear of the rivals.
+- **Intros and outros** match the mockups' tone: booth subject card, versus banner with camera swoop, animated stars and confetti, champion finale with fireworks.
+- Still different from the mockups: the Pie-o-Matic's horn is smaller than the mockup's; card art is emoji, not painted; Big Mo is the Bubu rig with sequins and a crown; confetti and cream are simple particles.

@@ -21,6 +21,8 @@
 - Booth subject cards, versus intro with camera swoop, tutorial coach bubbles, animated result screen with unlock notes, expert mode with crowns (solver-tested), carnival-night button on the midway, per-booth procedural music, hit-stop.
 - Big Mo has a sequinned finish and a champion's crown (still the Bubu rig).
 
+- Independent AAA audit (`docs/AUDIT.md`) → 15 issues; fixed as listed in `PLAYTEST.md`: answers hidden until you decide, context-aware explanations (incl. worked bet trees), kid-friendly wording, finale, framing, cream on faces, rooftop skyline, fairness for Peek-informed calls, shop and hand-card fixes. Re-verified: all 17 levels pass on first play (normal and expert) through the real buttons, constant strategies 0/17, no console errors; 68 tests.
+
 ## Open
 
 - Vercel deploy not done (not requested).
