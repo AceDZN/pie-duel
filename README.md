@@ -29,9 +29,9 @@ npm run capture  # gameplay screenshots at mockup size into docs/captures/
 
 | Action | Mouse / touch | Keys |
 |---|---|---|
-| Fire at the rival (first twin) | pink button, or tap the rival | `1` |
-| Fire at yourself | cyan button | `2` |
-| Fire at the second twin | pink button | `3` |
+| Throw at the rival (first twin) — "זריקה ליריב" | pink button, or tap the rival | `1` |
+| Throw at yourself — "זריקה עליי" | cyan button | `2` |
+| Throw at the second twin | pink button | `3` |
 | Call it (optional bet on P) | tap the probability scale | — |
 | Show the odds meter (limited levels) | "הצגת סיכוי" | `H` |
 | Use a trick card | card in your hand (bottom left) | — |

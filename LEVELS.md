@@ -199,9 +199,9 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 - **MC:** odds w81 p94/100; alwaysRival p13; alwaysSelf p6; random p16. Reach 100/100/54.
 - **Note:** most of the 6 % one-attempt odds failures come from the core scoring bug with Double (see "Open issues"); with the fix it is 99/100.
 
-## Booth 4 — קרנבל הסביבון (The Spinner Carnival) · vs רובו־ליצן (gambler's fallacy built in)
+## Booth 4 — קרנבל הגלגלים (The Spinner Carnival) · vs רובו־ליצן (gambler's fallacy built in)
 
-### 14. הסביבון — The spinner
+### 14. גלגל המזל — The spinner
 - **Goal:** גלגל עם החזרה: אחרי רצף ההסתברות לא משתנה. רובו־ליצן חושב שכן.
 - **Setup:** 5 v 6, meter on, call-it, seed 1411. Spinner loads (with replacement, independent): **¼ × 4 spins**, ¾ × 4, ¼ × 4, 4/5 × 4, 1/5 × 4.
 - **Math:** P(pie) = ¼ on every spin, whatever came before (tested over 40 seeds).
@@ -237,6 +237,20 @@ Every first-play seed (`seed`) is one the odds player wins and both constant str
 - **Setup:** 7 v 7, **no meter**, rooftop stage, transfer, call-it, 5 chips, hand: Double + Flavor; shop: flavor, peek, eject, double, spinner, magnifier; Big Mo has 2 peeks and 1 Double (he fires it when P(at least one pie in two) beats his best single shot). Seed 1717. Loads: **3/5** (Double 9/10), **spinner ¼ × 3**, **8 shells chocolate 3+1 / vanilla 1+3** (Flavor card: 3/4 vs 1/4), spinner ¾ × 3, 2/6, 4/6.
 - **Change:** the draft (5 v 5, 3/5 then a 5-spin wheel) ended before the flavor magazine in 100 % of matches; shorter spinner rounds and 7 v 7 now reach it in 100 %.
 - **MC:** odds w57 p94/100; alwaysRival w10 p10; alwaysSelf w13 p13; random p15. Reach 100/100/100. (With the Double scoring fix: odds p100/100.)
+
+## Polish pass (31 Oct) — what changed for players
+
+- **Meters:** L5 and the booth-3 teaching levels L10–L12 now have a *limited* meter (3 uses). Their side panels show the
+  inputs (tree branches, the lit table row, the area pieces) but keep the bottom line as "?" until you decide or spend
+  a meter use — the player does the new math (audit finding #1).
+- **What's new:** every goal card names what the level adds (`NEW_IN_LEVEL` in `src/text.ts`); every booth opens with a
+  subject card (`BOOTH_SUBJECTS` in `src/themes.ts`).
+- **Expert mode** (`expertLevel` in `src/levels.ts`): any passed level can be replayed as expert — no meter, the rival one
+  step smarter (Bubu reads the odds, odds players also peek), +1 rival cream point; crowns instead of stars.
+  `tests/expert.test.ts`: odds play passes every expert level within two attempts on ≥ 90 %, constant play ≤ 40 %, and
+  expert is measurably harder (lower summed win rate).
+- **Fairness:** a call made certain by your own Peek / Magnifier / Flavor Light counts as an informative decision.
+- **Wording:** throws and servings, not shots and shells; booth 4 is "קרנבל הגלגלים", L14 "גלגל המזל".
 
 ## Core issues found in review — all fixed
 

@@ -41,6 +41,30 @@ Full report: `docs/PLAYTEST_RAW.md`, screenshots in `docs/captures/playtest/`. N
 
 After the fixes: 66 unit tests pass; the headless UI run passes 15/17 first plays for the odds autoplayer (it doesn't use info cards; L6 and L8 were lost on luck) and **both L6 and L8 pass on the rematch through the real buttons**; **always-rival and always-self fail all 17 first plays**.
 
+## AAA audit (separate agent, all 17 levels + nights + phone) and what we did — 31 Oct
+
+Full report: `docs/AUDIT.md`. All 17 levels passed with 3★ on its frozen build, no console errors. Its top issues and status:
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | Panels/meter printed the new math's answer (L10–L12) | **Fixed:** limited meters; panels show inputs, bottom line "?" until you decide; Hebrew formulas |
+| 2 | One generic wrong-move card, sometimes misleading (L11 counts, L16 "1", L1 1/1) | **Fixed:** context-aware (flavor row, peek, wheel, area model, test estimate; ודאי / בלתי אפשרי named); wrong bets get a worked tree. Verified with `tests/wrong-moves.mjs` on 10 levels |
+| 3 | L16 test dummy visible in later levels | **Fixed** |
+| 4 | Small rivals, no cream on the face, Big Mo = red Bubu | **Fixed/improved:** rivals reframed and enlarged, face anchor at the face, cream stays on; Mo sequins + crown (still the Bubu rig) |
+| 5 | No finale, no booth intros, goal cards don't say what's new | **Fixed:** champion finale, booth subject cards, versus intro, "חדש:" line |
+| 6 | Peek turns calls "certain" and they don't count | **Fixed:** informed decisions count |
+| 7 | hp pies spill at 8+ points; meter under hp card | **Fixed:** compact pies; meter placed under the card |
+| 8 | Call token stays after Eject; meter "0/1" after Peek | **Fixed** |
+| 9 | English in formulas, awkward values, dreidel, weapon words, wrapping titles | **Fixed** |
+| 10 | Pacing 7–13 s between decisions | **Improved:** base speed ×1.3, ×2.4 toggle; not re-measured by the auditor |
+| 11 | Frame-edge boards/sign, dome blow-out, stray lever, wheels under panels, black rooftop | **Fixed** (rooftop skyline, moon, lit windows) |
+| 12 | Flat shop with duplicate offers; unusable hand cards clickable | **Partly:** unique offers, "buy cards" wording, unusable cards greyed out; card art is still emoji |
+| 13 | Endless: wrong "saved" text, rival/theme mismatch | **Fixed** |
+| 14 | L9 dim not visible; comic under banner; flat confetti; no hit-stop | **Fixed** (darker night game, comic on top, hit-stop); confetti still flat quads |
+| 15 | Phone: ×4 wrapping, toasts/panels covering | **Improved:** panel folds on phones, toasts cleared between levels |
+
+After the fixes (UI runs through the real buttons, headless Chrome): all 17 levels pass on first play in normal mode and in expert mode; always-rival and always-self pass 0 of 17; three of four endless nights won, no console errors. 68 unit tests pass.
+
 ## Known limits
 
 - Not tested on a real phone or tablet, only Chrome's mobile emulation at 390 × 844.

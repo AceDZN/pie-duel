@@ -10,6 +10,16 @@ A midnight neon carnival booth. You and a quirky rival sit at a small round tabl
 - Why not Buckshot's "dud on yourself = go again"? An exact DP over every magazine state showed that under those rules *always firing at the rival* is optimal everywhere, so the curriculum rule would have been a losing strategy. Under the rules above the probability rule is exactly optimal (the shell consumed and the next turn don't depend on your target; only the ±1 does).
 - Pass a level by winning **or** by reading the odds (≥ 80 % solver-correct calls, both kinds of question asked and answered right; good calls carry into the rematch). Stars measure decisions, not luck.
 
+## Words (kid-friendly, no weapons)
+In Hebrew UI: the Pie-o-Matic is **מכונת העוגות** ("the machine"), loads are **מנות** (servings), and you **throw**: "זריקה ליריב" / "זריקה עליי" — never ירי / פגזים / תותח / מחסנית.
+
+## Booths (art direction, `src/themes.ts`)
+1. The bakery (red/cream stripes, pie stand, popcorn cart) — Chef Bubu.
+2. Grandma Rina's card parlor (purple velvet, green felt, card lamp) — Grandma Rina.
+3. The Twins' toy stall (teal stripes, balloons, blocks, chalk tree diagram) — the Twins.
+4. The wheels carnival (orange/night, giant wheel, neon rings) — Robo-Clown.
+5. The rooftop (city skyline, moon, searchlights, trophy) — Big Mo with his crown.
+
 ## Feel
 - Slapstick, kid-friendly: cream pies and confetti. Never a gun, no weapons, no gore. The Pie-o-Matic is a chunky carnival contraption (brass barrel shaped like a trumpet bell, glass hopper on top where you see the shell *count* but not the order, bulb counter lights, a big red lever).
 - Tension in the pause before the lever; payoff in a slow-motion SPLAT on a face, or a confetti POP.
