@@ -50,6 +50,7 @@ Settings on the title screen: sound, reduced motion. Progress (stars, unlocks) i
 - Three.js scene in `src/scene.ts`: booth, Pie-o-Matic, rigged Tripo rivals (`THREE.AnimationMixer`: idle, laugh, hit, cheer, defeat), slow-motion shots, cream that stretches in flight and splats flat, fluttering confetti, splash rings, glowing fireworks, bloom. Painted card art in `public/cards/`. Models and their sources are listed in `ASSETS.md`.
 - HUD in `index.html` + `src/game.ts` + `src/style.css`, Hebrew RTL with fractions in LTR isolates, laid out after the gameplay mockups in `docs/visual-targets/`.
 - Browser tests: `node tests/smoke.mjs odds 1-17` (all levels through the real buttons; `EXPERT=1` for expert mode; `BROWSER=firefox` or `webkit` for other engines), `node tests/capture.mjs <dir>`, `node tests/tour.mjs <ids> <dir>`, `node tests/progress-capture.mjs <dir>` (all need the dev server).
+- Workbook host: `src/host.ts` is the shared workbook games bridge (acedzn-tools `docs/games/PLAN.md`, section 4). Inside the workbook player it posts `ready`, `level-start` and `level-complete` (with stars and duration); on its own it posts nothing. `?level=N` opens level N's intro even if it's locked in the save. `node tests/host-embed.mjs` checks it in a real iframe. `workbook/poster.jpg` is the release poster.
 - Test hooks: `window.render_game_to_text()` and a deterministic `await window.advanceTime(ms)`; `tests/autoplay.js` plays a level through the real buttons.
 
 ## Deploy (Vercel, static)

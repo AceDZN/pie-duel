@@ -10,6 +10,7 @@ import type { Stage, Seat } from './scene';
 import type { Sfx } from './audio';
 import { allEvents, loadSave, logEvent, writeSave, type Save } from './save';
 import { stickers, subjectRows } from './progress';
+import { postToHost } from './host';
 import { BET_NAME, CARD_INFO, cardArt, NEW_IN_LEVEL, count, rivalVerb, DUD_SVG, FACE_YOU, MYSTERY_SVG, PIE_SVG, RIVAL_FACE, RULES_HTML, fr, ltr } from './text';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -229,6 +230,7 @@ export class Game {
   /** expert mode toggle on the midway (applies to levels you've passed). */
   expertMode = false;
   private stickersHad = new Set<string>();
+  private levelStartedAt = 0;
 
   private key(id: number) {
     return this.level.expert ? id + 1000 : id;
@@ -250,6 +252,8 @@ export class Game {
       writeSave(this.save);
     }
     this.duel = new Duel(this.level, seed, this.save.carry[k] ?? []);
+    this.levelStartedAt = performance.now();
+    if (this.level.id < 100) postToHost({ type: 'level-start', level: this.level.id });
     $('title').classList.add('hidden');
     $('select').classList.add('hidden');
     $('overlay').classList.add('hidden');
@@ -929,6 +933,7 @@ export class Game {
       this.save.carry[id] = [...d.carry, ...d.decisions].slice(-16);
     }
     writeSave(this.save);
+    if (!endless && r.passed) postToHost({ type: 'level-complete', level: id, stars: r.stars, durationMs: Math.round(performance.now() - this.levelStartedAt) });
     logEvent({ t: Date.now(), level: id, kind: 'match', outcome: `${r.won ? 'won' : 'lost'}/${r.passed ? 'passed' : 'not-passed'}`, attempt: this.attempt, firstTry: this.attempt === 1 });
     if (r.won) {
       this.sfx.win();

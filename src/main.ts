@@ -6,6 +6,8 @@ import '@fontsource/rubik/latin-700.css';
 import './style.css';
 import { Sfx } from './audio';
 import { Game } from './game';
+import { initHost, parseLevelParam, postToHost } from './host';
+import { LEVELS } from './levels';
 import { loadModels } from './models';
 import { Stage } from './scene';
 
@@ -21,6 +23,8 @@ const canvas = document.getElementById('game') as HTMLCanvasElement;
 const app = document.getElementById('app')!;
 const title = document.getElementById('title')!;
 title.innerHTML = '<h1 class="logo">דו־קרב העוגות</h1><div class="subtitle" id="loading">מעמיסים עוגות…</div>';
+
+initHost('pie-duel');
 
 async function boot() {
   const models = await loadModels((done, total) => {
@@ -93,7 +97,11 @@ async function boot() {
   };
   window.render_game_to_text = () => JSON.stringify(game.describe());
 
-  game.showTitle();
+  // a lesson link (`?level=N`) opens that level's intro, even if the local save has it locked
+  const deep = parseLevelParam(location.search, LEVELS.length);
+  if (deep !== null) game.startLevel(LEVELS[deep].id);
+  else game.showTitle();
+  postToHost({ type: 'ready' });
 }
 
 boot();
