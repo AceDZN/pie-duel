@@ -920,7 +920,7 @@ export class Game {
     const next = endless ? null : LEVELS.find((l) => l.id === id + 1);
     const wrong = d.decisions.filter((x) => !x.correct).slice(-1)[0];
     const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.pSeen))} ובחרת ${wrong.choice === 'self' ? 'לכוון לעצמך' : wrong.choice === 'rival' ? 'לזרוק על היריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
-    if (r.passed && id === 17 && !expert) return this.finale(stars);
+    if (r.passed && id === 17 && !expert) return this.finale(stars, r.won);
     this.overlay(
       `<h2>${title}</h2>${stars}<p>${why}</p><p>החלטות לפי הסיכויים: ${ltr(`${r.matchCorrect}/${r.matchDecisions}`)}${d.carry.length ? ` (כולל ניסיונות קודמים: ${ltr(`${r.correct}/${r.total}`)})` : ''}</p>${lesson}
       ${r.passed && !endless && !expert && next && next.booth !== d.level.booth ? `<p class="unlock">🎪 נפתח דוכן חדש: <b>${BOOTHS.find((b) => b.id === next.booth)!.name}</b> — ${BOOTH_SUBJECTS[next.booth].subject}</p>` : ''}
@@ -937,13 +937,13 @@ export class Game {
   }
 
   /** The champion's finale: trophy, fireworks, totals and where to go next. */
-  private finale(stars: string) {
+  private finale(stars: string, won: boolean) {
     const total = Object.values(this.save.stars).reduce((a, b) => a + b, 0);
     for (let i = 0; i < 8; i++) setTimeout(() => this.stage.fireworks(), i * 260);
     this.domConfetti();
     setTimeout(() => this.domConfetti(), 900);
     this.overlay(
-      `<div class="finale"><div class="trophy">🏆</div><h2>אלופי הקרנבל!</h2>${stars}<p>ביג מו מכוסה בקצפת, והגביע שלכם. ספרתם, חישבתם — ועקפתם את המזל.</p>
+      `<div class="finale"><div class="trophy">🏆</div><h2>אלופי הקרנבל!</h2>${stars}<p>${won ? 'ביג מו מכוסה בקצפת, והגביע שלכם.' : 'ביג מו ניצח בקרב — אבל ההחלטות שלכם היו של אלופים, והגביע שלכם.'} ספרתם, חישבתם — ועקפתם את המזל.</p>
       <p>סך הכול: ★ ${ltr(`${total}/51`)}</p>
       <ul><li>🔥 <b>מצב מומחה</b> נפתח לכל שלב שעברתם: בלי מד ונגד יריבים חכמים יותר — אספו כתרים 👑</li><li>🎡 <b>לילות בקרנבל</b>: תערובות חדשות בכל לילה, כמה לילות ברצף תשרדו?</li></ul></div>
       <div class="row-btns"><button class="btn gold" id="ov-night">🎡 לילה בקרנבל</button><button class="btn dark" id="ov-select">לשדרת הדוכנים</button></div>`,

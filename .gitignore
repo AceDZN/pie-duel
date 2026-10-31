@@ -6,3 +6,5 @@ test-results
 *.log
 assets-src/
 docs/captures/audit/
+docs/captures/playtest/
+docs/captures/tour/

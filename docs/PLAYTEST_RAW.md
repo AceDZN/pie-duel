@@ -1,5 +1,7 @@
 # Pie Duel: raw playtest notes (independent tester)
 
+> Screenshots referenced below were taken on an earlier build; they are kept in git history (commit before 2026-10-31 polish) and in `docs/captures/playtest/` locally, but no longer tracked.
+
 Date: 2026-10-31. Build: `dist/` served by `vite preview` on http://localhost:4216/.
 Driver: Playwright + Chrome (`--use-angle=metal`), 1280×720 desktop and 390×844 `isMobile`/`hasTouch`. Game time was stepped with
 `window.advanceTime`. Every move went through real inputs: keys `1`/`2`/`3`/`P`/`M`/`H`/`Enter`, clicks on `[data-t]`,
