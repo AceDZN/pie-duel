@@ -1,18 +1,20 @@
 // Real gameplay captures at the same viewport and moments as the mockups in docs/visual-targets/.
 // Inputs are real clicks/keys; game time is stepped with window.advanceTime.  Needs a server (default :4216 preview).
-// Usage: BASE=http://localhost:4216/ node tests/capture.mjs [outDir]
-import { chromium } from 'playwright';
+// Usage: BASE=http://localhost:4216/ node tests/capture.mjs [outDir]   (BROWSER=firefox|webkit for another engine)
+import { chromium, firefox, webkit } from 'playwright';
 import { toGoal } from './helpers-browser.mjs';
 import { mkdirSync } from 'node:fs';
 
 const out = process.argv[2] ?? 'docs/captures';
 mkdirSync(out, { recursive: true });
 const BASE = process.env.BASE ?? 'http://localhost:4216/';
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const engine = process.env.BROWSER ?? 'chrome';
+const browser =
+  engine === 'firefox' ? await firefox.launch() : engine === 'webkit' ? await webkit.launch() : await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const errors = [];
 
 async function open(viewport, mobile = false) {
-  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: mobile, isMobile: mobile });
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: mobile, isMobile: mobile && engine !== 'firefox' });
   const p = await ctx.newPage();
   p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   p.on('pageerror', (e) => errors.push(String(e)));

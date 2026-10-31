@@ -43,11 +43,13 @@ Settings on the title screen: sound, reduced motion. Progress (stars, unlocks) i
 
 - 17 authored levels in 5 booths, each booth a new subject and a new look: the bakery (probability, scale, complement · grade 8), Grandma Rina's card parlor (without replacement, dependent events, conditional probability · grade 9), the Twins' toy stall (tree diagrams, two-way tables, area model · grade 9), Robo-Clown's spinner carnival (independent repeated trials, relative frequency · grades 8–9), and the rooftop final vs Big Mo. Each booth opens with a subject card; each match with a versus banner. See `LEVELS.md` and `CURRICULUM.md`.
 - Progression and replay: stars per level (decision quality), any passed level can be replayed from the midway, **expert mode** for every passed level (no meter, smarter rival, crowns), and endless **carnival nights** (generated mixes, each checked by the solver before it's served).
+- After every match, a timeline of your decisions (the odds, your move, ✓/✗). A progress notebook on the midway shows accuracy per subject, suggests the level to replay and collects stickers (`src/progress.ts`).
 - Booth 1 coaches the first decisions (what the fraction means, which button fits) without forcing them.
 - A procedural carnival waltz per booth (music toggle on the title screen), synthesized sound effects, hit-stop, slow motion on your own splats.
 - Pure math core in `src/core/` (exact fractions, probability helpers, the duel state machine, rival AI, scoring and the fairness rule) with no Three.js imports; tests in `tests/`.
-- Three.js scene in `src/scene.ts`: booth, Pie-o-Matic, rigged Tripo rivals (`THREE.AnimationMixer`: idle, laugh, hit, cheer, defeat), slow-motion shots, cream and confetti particles, bloom. Models and their sources are listed in `ASSETS.md`.
+- Three.js scene in `src/scene.ts`: booth, Pie-o-Matic, rigged Tripo rivals (`THREE.AnimationMixer`: idle, laugh, hit, cheer, defeat), slow-motion shots, cream that stretches in flight and splats flat, fluttering confetti, splash rings, glowing fireworks, bloom. Painted card art in `public/cards/`. Models and their sources are listed in `ASSETS.md`.
 - HUD in `index.html` + `src/game.ts` + `src/style.css`, Hebrew RTL with fractions in LTR isolates, laid out after the gameplay mockups in `docs/visual-targets/`.
+- Browser tests: `node tests/smoke.mjs odds 1-17` (all levels through the real buttons; `EXPERT=1` for expert mode; `BROWSER=firefox` or `webkit` for other engines), `node tests/capture.mjs <dir>`, `node tests/tour.mjs <ids> <dir>`, `node tests/progress-capture.mjs <dir>` (all need the dev server).
 - Test hooks: `window.render_game_to_text()` and a deterministic `await window.advanceTime(ms)`; `tests/autoplay.js` plays a level through the real buttons.
 
 ## Deploy (Vercel, static)

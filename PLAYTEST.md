@@ -58,9 +58,9 @@ Full report: `docs/AUDIT.md`. All 17 levels passed with 3★ on its frozen build
 | 9 | English in formulas, awkward values, dreidel, weapon words, wrapping titles | **Fixed** |
 | 10 | Pacing 7–13 s between decisions | **Improved:** base speed ×1.3, ×2.4 toggle; not re-measured by the auditor |
 | 11 | Frame-edge boards/sign, dome blow-out, stray lever, wheels under panels, black rooftop | **Fixed** (rooftop skyline, moon, lit windows) |
-| 12 | Flat shop with duplicate offers; unusable hand cards clickable | **Partly:** unique offers, "buy cards" wording, unusable cards greyed out; card art is still emoji |
+| 12 | Flat shop with duplicate offers; unusable hand cards clickable | **Partly:** unique offers, "buy cards" wording, unusable cards greyed out; painted card art added in the next pass |
 | 13 | Endless: wrong "saved" text, rival/theme mismatch | **Fixed** |
-| 14 | L9 dim not visible; comic under banner; flat confetti; no hit-stop | **Fixed** (darker night game, comic on top, hit-stop); confetti still flat quads |
+| 14 | L9 dim not visible; comic under banner; flat confetti; no hit-stop | **Fixed** (darker night game, comic on top, hit-stop); confetti now flutters in three shapes and lies flat when it lands |
 | 15 | Phone: ×4 wrapping, toasts/panels covering | **Improved:** panel folds on phones, toasts cleared between levels |
 
 After the fixes (UI runs through the real buttons, headless Chrome): all 17 levels pass on first play in normal mode and in expert mode; always-rival and always-self pass 0 of 17; three of four endless nights won, no console errors. 68 unit tests pass.
@@ -68,5 +68,5 @@ After the fixes (UI runs through the real buttons, headless Chrome): all 17 leve
 ## Known limits
 
 - Not tested on a real phone or tablet, only Chrome's mobile emulation at 390 × 844.
-- Not tested in Safari or Firefox.
+- Firefox and Safari tested through Playwright's Firefox and WebKit engines (levels 1, 5, 10, 14, 17 and every capture moment), not in the real desktop or iOS browsers.
 - No student has played it yet.

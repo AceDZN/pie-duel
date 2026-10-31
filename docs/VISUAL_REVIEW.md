@@ -28,7 +28,7 @@ Actual: `docs/captures/*.jpg`, taken by `tests/capture.mjs` in headless Chrome a
 2. **Rival scale.** The mockup's Bubu fills a third of the frame; ours is a little smaller and stands behind the table edge (his body is partly hidden). Moving him closer clipped the HUD's hp card.
 3. **Stylisation.** The mockups are painterly with heavy depth of field and dense crowds/Ferris wheel lights; the game uses real-time lighting, bloom and a painted backdrop. The night carnival mood and palette match; the density of background detail doesn't.
 4. **Shell counter.** The mockup shows the shells inside the glass; we show them in the HUD and the loading jar. Order is hidden in both (icons are sorted by kind, never by position).
-5. **Card art.** Mockup cards have painted illustrations; ours use emoji art on coloured cards.
+5. **Card art.** ~~Emoji art on coloured cards.~~ Closed: painted illustrations for all six cards (see below).
 6. **Big Mo** is the Bubu rig recoloured and scaled (no Tripo budget left for a new model); the mockup shows a sequined showman.
 7. **Chip icon:** we use the pink poker chip from mockup 05 everywhere (mockups 01–04 used a gold coin).
 8. **Twins:** both seats use the same rigged kid model; the second is tinted, so they read as twins but aren't in matching carnival vests.
@@ -57,3 +57,12 @@ Per-level gallery of real first decisions: `docs/captures/levels/L01–L17.jpg` 
 - **Wheels** on tall stands at the booth's right side; the coin and area-model panel stay clear of the rivals.
 - **Intros and outros** match the mockups' tone: booth subject card, versus banner with camera swoop, animated stars and confetti, champion finale with fireworks.
 - Still different from the mockups: the Pie-o-Matic's horn is smaller than the mockup's; card art is emoji, not painted; Big Mo is the Bubu rig with sequins and a crown; confetti and cream are simple particles.
+
+## "Even better" pass (31 Oct 2026)
+
+- **Card art:** painted illustrations for Peek, Eject, Double, Wheel, Magnifier and Flavor Light (`public/cards/`), in the shop (`05-card-shop.jpg`) and the hand. Closes difference 5.
+- **Effects:** cream stretches along its flight and lands as flat splats; a splash ring on each hit; confetti flutters in three shapes and lies flat; fireworks are soft, two-tone and twinkle (`02-core-splat.jpg`, `10-rooftop-final.jpg`).
+- **Booth 3 cloth:** the white stripes bloomed into a white patch in front of the Twins (`07-area-model.jpg` before); now mint.
+- **New screens:** result card with the decision timeline (`13-result-d.jpg`, `13-result-m.jpg`), progress notebook and stickers (`14-notebook-*.jpg`, `14b-stickers-*.jpg`).
+- **Other engines:** the same captures in Firefox and WebKit match Chrome (not committed; `BROWSER=firefox node tests/capture.mjs <dir>`).
+- Still different from the mockups: the Pie-o-Matic's horn; Big Mo is the Bubu rig.

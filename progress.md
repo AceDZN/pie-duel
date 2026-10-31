@@ -23,6 +23,16 @@
 
 - Independent AAA audit (`docs/AUDIT.md`) → 15 issues; fixed as listed in `PLAYTEST.md`: answers hidden until you decide, context-aware explanations (incl. worked bet trees), kid-friendly wording, finale, framing, cream on faces, rooftop skyline, fairness for Peek-informed calls, shop and hand-card fixes. Re-verified: all 17 levels pass on first play (normal and expert) through the real buttons, constant strategies 0/17, no console errors; 68 tests.
 
+## 2026-10-31 — "make it even better" pass
+
+- Painted card art for all six trick cards (`public/cards/`, Gemini image generation, ~$0.27), in the shop and in the hand; the emoji stays as alt text.
+- Effects: cream droplets stretch along their flight and flatten into splats on the cloth; an expanding splash ring on every hit; confetti in three shapes (squares, oblongs, streamers) that flutters, tumbles and lies flat when it lands; fireworks as soft two-tone glows that hang and twinkle; round dust motes.
+- Learning: the result card shows a timeline of every decision in the match (the odds you saw, what you did, ✓/✗); a progress notebook on the midway (📒) with accuracy per subject over the last 30 decisions, a link to the level most worth replaying, and 11 stickers (booths, a perfect booth, a 10-decision streak, "lost the fight but passed", crowns, nights). New stickers are announced on the result card. Logic in `src/progress.ts`, tests in `tests/progress.test.ts`.
+- Music: brushed kick and hi-hat under the waltz; an A A B A melody instead of one phrase on loop.
+- Booth 3's white tablecloth stripes bloomed into a white patch in front of the Twins; now mint.
+- Cross-browser: `BROWSER=firefox|webkit` for `tests/smoke.mjs` and `tests/capture.mjs`. Levels 1, 5, 10, 14 and 17 pass in Firefox and WebKit through the real buttons with no console errors; all capture moments render in both.
+- Re-verified in Chrome: all 17 levels pass on first play in normal and expert mode; always-rival and always-self pass 0 of 17; 71 tests.
+
 ## Open
 
 - Vercel deploy not done (not requested).

@@ -1,6 +1,7 @@
 // Headless real-browser smoke run: every level played through the HUD buttons with the solver's best moves
 // (and optionally a constant strategy). Needs the dev server on :5216.  Usage: node tests/smoke.mjs [strategy] [ids]
-import { chromium } from 'playwright';
+// BROWSER=firefox|webkit runs it in that engine instead of Chrome.
+import { chromium, firefox, webkit } from 'playwright';
 import { toGoal } from './helpers-browser.mjs';
 
 const strategy = process.argv[2] ?? 'odds';
@@ -8,7 +9,9 @@ const ids = (process.argv[3] ?? '1-17').split(',').flatMap((r) => {
   const [a, b] = r.split('-').map(Number);
   return b ? Array.from({ length: b - a + 1 }, (_, i) => a + i) : [a];
 });
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const engine = process.env.BROWSER ?? 'chrome';
+const browser =
+  engine === 'firefox' ? await firefox.launch() : engine === 'webkit' ? await webkit.launch() : await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 const errors = [];
