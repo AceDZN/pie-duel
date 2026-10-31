@@ -98,9 +98,10 @@ class Rival {
   /** World position of the face (where pies land). */
   facePos(out = new THREE.Vector3()) {
     if (this.head) {
+      // Mixamo's head bone sits at the neck of these big-headed characters: the face is well above it
       this.head.getWorldPosition(out);
-      out.y += this.height * 0.02;
-      out.z += 0.1;
+      out.y += this.height * 0.2;
+      out.z += 0.08;
       return out;
     }
     return this.root.localToWorld(out.set(0, this.height * 0.88, 0.15));
@@ -114,7 +115,7 @@ class Rival {
     const p = this.facePos(new THREE.Vector3());
     if (camPos) {
       // cream sits on the skin: push the anchor out to the front of the (big, chibi) head and face the camera
-      const surf = p.clone().addScaledVector(camPos.clone().sub(p).normalize(), this.height * 0.07);
+      const surf = p.clone().addScaledVector(camPos.clone().sub(p).normalize(), this.height * 0.15);
       this.root.worldToLocal(surf);
       this.face.position.copy(surf);
       this.face.lookAt(camPos);
@@ -123,7 +124,7 @@ class Rival {
       this.root.worldToLocal(p);
       this.face.position.copy(p);
     }
-    if (this.crown) this.crown.position.copy(p).add(V(0, this.height * 0.4, -0.04));
+    if (this.crown) this.crown.position.copy(p).add(V(0, this.height * 0.21, -0.06));
   }
 }
 
@@ -1115,7 +1116,8 @@ export class Stage {
     if (!r) return;
     this.hitStop();
     const at = r.facePos();
-    this.cream.burst(at, V(0, 0, -1), 90);
+    // spray outward and away from the lens (towards the back of the booth), not into the camera
+    this.cream.burst(at, V(0, 0, 1), 90);
     this.shake = 0.6;
     // stick a few blobs on the face
     const creamMat = new THREE.MeshStandardMaterial({ color: 0xfffaf0, roughness: 0.28, emissive: 0x2a2620 });
@@ -1137,8 +1139,9 @@ export class Stage {
 
   splatYou() {
     this.hitStop();
-    const at = this.camera.position.clone().add(V(0, -0.05, -0.2));
-    this.cream.burst(at, V(0, 0, 1), 60);
+    // the screen overlay sells the hit; the 3D burst stays a little way in front of the lens
+    const at = this.camera.position.clone().lerp(this.cannon.position.clone().setY(this.camera.position.y - 0.1), 0.35);
+    this.cream.burst(at, V(0, 0, -1), 35);
     this.shake = 0.9;
     this.yourCream++;
   }
