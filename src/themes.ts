@@ -58,7 +58,7 @@ export const THEMES: Record<1 | 2 | 3 | 4 | 5, Theme> = {
     stripeA: '#169c8a',
     stripeB: '#f2fff8',
     wall: 0x0d2a34,
-    cloth: { kind: 'rays', a: '#17a58f', b: '#f3efe0', rim: '#0d4a42' },
+    cloth: { kind: 'rays', a: '#17a58f', b: '#b9dccd', rim: '#0d4a42' }, // mint, not white: a white cloth blooms out under the key light
     neon: [0x3ee6ff, 0xffd166, 0xff8ac8],
     keyLight: 0xf2fff4,
     rim: 0x6ff0ff,

@@ -150,23 +150,45 @@ function proceduralRival(h: number) {
 
 // ---------------------------------------------------------------- particles
 
+/** A soft round glow for point sprites (fireworks, dust, sparkles): square GL points read as pixels. */
+let dotTex: THREE.Texture | null = null;
+function softDot() {
+  if (dotTex) return dotTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255,255,255,1)');
+  r.addColorStop(0.25, 'rgba(255,255,255,0.85)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
+  dotTex = new THREE.CanvasTexture(c);
+  return dotTex;
+}
+
 class Confetti {
   mesh: THREE.InstancedMesh;
   pos: THREE.Vector3[] = [];
   vel: THREE.Vector3[] = [];
   rot: THREE.Euler[] = [];
+  spin: THREE.Vector3[] = [];
+  shape: THREE.Vector3[] = []; // squares, oblongs and the odd streamer
   life: number[] = [];
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
-  private s = new THREE.Vector3(1, 1, 1);
+  private sc = new THREE.Vector3();
   constructor(n: number) {
-    this.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.035, 0.022), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false }), n);
+    this.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.03, 0.02), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false }), n);
     this.mesh.frustumCulled = false;
-    const colors = [0xff4fa3, 0x3ee6ff, 0xffc35a, 0x7ee07a, 0xb36bff, 0xffffff];
+    const colors = [0xff4fa3, 0x3ee6ff, 0xffc35a, 0x7ee07a, 0xb36bff, 0xffffff, 0xffe066];
     for (let i = 0; i < n; i++) {
       this.pos.push(new THREE.Vector3(0, -99, 0));
       this.vel.push(new THREE.Vector3());
       this.rot.push(new THREE.Euler());
+      this.spin.push(new THREE.Vector3());
+      const kind = i % 9;
+      this.shape.push(kind === 0 ? new THREE.Vector3(0.45, 4.2, 1) : kind < 4 ? new THREE.Vector3(1.3, 0.7, 1) : new THREE.Vector3(1, 1, 1));
       this.life.push(0);
       this.mesh.setColorAt(i, new THREE.Color(colors[i % colors.length]));
     }
@@ -179,8 +201,9 @@ class Confetti {
       const a = Math.random() * Math.PI * 2;
       const b = Math.random() * Math.PI - Math.PI / 2;
       this.vel[i].set(Math.cos(a) * Math.cos(b), Math.sin(b) * 0.6 + up * 0.6, Math.sin(a) * Math.cos(b)).multiplyScalar(speed * (0.4 + Math.random()));
-      this.rot[i].set(Math.random() * 6, Math.random() * 6, 0);
-      this.life[i] = 2.4 + Math.random();
+      this.rot[i].set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      this.spin[i].set(4 + Math.random() * 8, 2 + Math.random() * 6, (Math.random() - 0.5) * 4);
+      this.life[i] = 2.6 + Math.random() * 1.2;
     }
   }
   update(dt: number) {
@@ -192,18 +215,30 @@ class Confetti {
       }
       this.life[i] -= dt;
       const v = this.vel[i];
-      v.y -= 3.2 * dt;
-      v.multiplyScalar(1 - 2.2 * dt);
-      v.x += Math.sin(this.life[i] * 7 + i) * 0.4 * dt;
-      this.pos[i].addScaledVector(v, dt);
-      if (this.pos[i].y < TABLE_Y + 0.005 && Math.hypot(this.pos[i].x, this.pos[i].z - 0) < 1.25) {
-        this.pos[i].y = TABLE_Y + 0.005;
-        v.set(0, 0, 0);
+      const landed = v.lengthSq() === 0;
+      if (!landed) {
+        // paper flutters: strong drag, a slow terminal fall and a side-to-side tumble that follows its spin
+        v.y -= 3.2 * dt;
+        v.multiplyScalar(1 - 2.6 * dt);
+        if (v.y < -0.55) v.y = -0.55;
+        const flutter = Math.sin(this.rot[i].x * 1.3);
+        v.x += flutter * 0.9 * dt;
+        v.z += Math.cos(this.rot[i].y * 1.1) * 0.6 * dt;
+        this.pos[i].addScaledVector(v, dt);
+        this.rot[i].x += dt * this.spin[i].x;
+        this.rot[i].y += dt * this.spin[i].y;
+        this.rot[i].z += dt * this.spin[i].z;
+        if (this.pos[i].y < TABLE_Y + 0.005 && Math.hypot(this.pos[i].x, this.pos[i].z) < 1.25) {
+          this.pos[i].y = TABLE_Y + 0.004;
+          v.set(0, 0, 0);
+          this.rot[i].set(-Math.PI / 2, 0, this.rot[i].z); // lie flat on the cloth
+        }
       }
-      this.rot[i].x += dt * 8;
-      this.rot[i].y += dt * 5;
+      // shrink away in the last half second
+      const fade = Math.min(1, this.life[i] * 2);
+      this.sc.copy(this.shape[i]).multiplyScalar(fade);
       this.q.setFromEuler(this.rot[i]);
-      this.m.compose(this.pos[i], this.q, this.s);
+      this.m.compose(this.pos[i], this.q, this.sc);
       this.mesh.setMatrixAt(i, this.m);
     }
     this.mesh.instanceMatrix.needsUpdate = true;
@@ -217,9 +252,13 @@ class Cream {
   size: number[] = [];
   life: number[] = [];
   private m = new THREE.Matrix4();
+  private q = new THREE.Quaternion();
+  private sc = new THREE.Vector3();
+  private up = new THREE.Vector3(0, 1, 0);
+  private dir = new THREE.Vector3();
   private cursor = 0;
   constructor(n: number) {
-    this.mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: 0xfff8ec, roughness: 0.35 }), n);
+    this.mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 9), new THREE.MeshStandardMaterial({ color: 0xfff8ec, roughness: 0.25, emissive: 0x2a2418 }), n);
     this.mesh.frustumCulled = false;
     for (let i = 0; i < n; i++) {
       this.pos.push(new THREE.Vector3(0, -99, 0));
@@ -236,8 +275,9 @@ class Cream {
         .set(Math.random() - 0.5, Math.random() * 0.9, Math.random() - 0.5)
         .multiplyScalar(3.2)
         .addScaledVector(dir, -0.8 - Math.random());
-      this.size[i] = 0.012 + Math.random() * 0.028;
-      this.life[i] = 1.2 + Math.random() * 0.8;
+      // a few big globs among the spray
+      this.size[i] = k % 7 === 0 ? 0.04 + Math.random() * 0.02 : 0.01 + Math.random() * 0.024;
+      this.life[i] = 1.6 + Math.random() * 1.2;
     }
   }
   update(dt: number) {
@@ -248,14 +288,29 @@ class Cream {
         continue;
       }
       this.life[i] -= dt;
-      this.vel[i].y -= 6 * dt;
-      this.pos[i].addScaledVector(this.vel[i], dt);
-      if (this.pos[i].y < TABLE_Y + 0.01 && Math.abs(this.pos[i].x) < 1.3 && Math.abs(this.pos[i].z) < 1.3) {
-        this.pos[i].y = TABLE_Y + 0.01;
-        this.vel[i].set(0, 0, 0);
+      const v = this.vel[i];
+      const grow = Math.min(1, this.life[i] * 2);
+      const sz = this.size[i] * grow;
+      if (v.lengthSq() > 0) {
+        v.y -= 6 * dt;
+        this.pos[i].addScaledVector(v, dt);
+        if (this.pos[i].y < TABLE_Y + 0.01 && Math.abs(this.pos[i].x) < 1.3 && Math.abs(this.pos[i].z) < 1.3) {
+          this.pos[i].y = TABLE_Y + 0.006;
+          v.set(0, 0, 0);
+          this.life[i] = Math.max(this.life[i], 2.2); // landed blobs linger as splats on the cloth
+        }
+        // stretch along the direction of travel: liquid in flight, not marbles
+        const speed = v.length();
+        const stretch = 1 + Math.min(2.2, speed * 0.35);
+        this.dir.copy(v).normalize();
+        if (speed > 0) this.q.setFromUnitVectors(this.up, this.dir);
+        this.sc.set(sz / Math.sqrt(stretch), sz * stretch, sz / Math.sqrt(stretch));
+      } else {
+        // a flat splat on the table
+        this.q.identity();
+        this.sc.set(sz * 1.9, sz * 0.28, sz * 1.9);
       }
-      const s = this.size[i] * Math.min(1, this.life[i] * 2);
-      this.m.makeScale(s, s * 0.8, s).setPosition(this.pos[i]);
+      this.m.compose(this.pos[i], this.q, this.sc);
       this.mesh.setMatrixAt(i, this.m);
     }
     this.mesh.instanceMatrix.needsUpdate = true;
@@ -1118,6 +1173,7 @@ export class Stage {
     const at = r.facePos();
     // spray outward and away from the lens (towards the back of the booth), not into the camera
     this.cream.burst(at, V(0, 0, 1), 90);
+    this.splashRing(at);
     this.shake = 0.6;
     // stick a few blobs on the face
     const creamMat = new THREE.MeshStandardMaterial({ color: 0xfffaf0, roughness: 0.28, emissive: 0x2a2620 });
@@ -1150,6 +1206,7 @@ export class Stage {
     // a pop in your face bursts a little way in front of the lens so the pieces don't fill the screen
     const at = seat === 'you' ? this.camera.position.clone().lerp(this.cannon.position, 0.45) : this.targetPoint(seat);
     this.confetti.burst(at, seat === 'you' ? 120 : 140, seat === 'you' ? 1.4 : 2.4);
+    if (seat !== 'you') this.splashRing(at, 0xffe27a);
   }
 
   ejectShell(kind: 'pie' | 'dud') {
@@ -1179,23 +1236,54 @@ export class Stage {
   }
 
   fireworks() {
-    const n = 140;
+    const n = 160;
     const geo = new THREE.BufferGeometry();
     const pos = new Float32Array(n * 3);
     const vel = new Float32Array(n * 3);
+    const col = new Float32Array(n * 3);
     const c = V((Math.random() - 0.5) * 6, 4 + Math.random() * 2, -7 - Math.random() * 3);
+    const palette = [0xff4fa3, 0x3ee6ff, 0xffc35a, 0x7ee07a, 0xb36bff];
+    const a1 = new THREE.Color(palette[Math.floor(Math.random() * palette.length)]);
+    const a2 = new THREE.Color(palette[Math.floor(Math.random() * palette.length)]).lerp(new THREE.Color(0xffffff), 0.4);
     for (let i = 0; i < n; i++) {
       pos.set([c.x, c.y, c.z], i * 3);
       const a = Math.random() * Math.PI * 2;
       const b = Math.acos(2 * Math.random() - 1);
-      const s = 2 + Math.random() * 1.5;
+      // an inner and an outer shell, each its own colour
+      const outer = i % 3 !== 0;
+      const s = (outer ? 2.6 : 1.3) + Math.random() * 0.5;
       vel.set([Math.sin(b) * Math.cos(a) * s, Math.cos(b) * s, Math.sin(b) * Math.sin(a) * s], i * 3);
+      const k = outer ? a1 : a2;
+      col.set([k.r, k.g, k.b], i * 3);
     }
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const col = [0xff4fa3, 0x3ee6ff, 0xffc35a, 0x7ee07a][Math.floor(Math.random() * 4)];
-    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: col, size: 0.09, transparent: true, toneMapped: false, depthWrite: false }));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const pts = new THREE.Points(
+      geo,
+      new THREE.PointsMaterial({ map: softDot(), vertexColors: true, size: 0.22, transparent: true, toneMapped: false, depthWrite: false, blending: THREE.AdditiveBlending }),
+    );
     this.scene.add(pts);
     this.bursts.push({ mesh: pts, t: 0, vel });
+  }
+
+  /** A quick expanding ring where a pie lands: the "whump" you can see. */
+  private splashRing(at: THREE.Vector3, color = 0xfff6e6) {
+    if (this.reducedMotion) return;
+    const m = new THREE.Mesh(new THREE.RingGeometry(0.6, 1, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+    m.position.copy(at);
+    m.lookAt(this.camera.position);
+    m.scale.setScalar(0.05);
+    this.scene.add(m);
+    this.tweens
+      .tween(380, (k) => {
+        m.scale.setScalar(0.05 + k * 0.42);
+        (m.material as THREE.MeshBasicMaterial).opacity = 0.85 * (1 - k) ** 1.5;
+      })
+      .then(() => {
+        this.scene.remove(m);
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
+      });
   }
 
   // ------------------------------------------------------------ frame
@@ -1236,11 +1324,16 @@ export class Stage {
       f.t += sdt;
       const p = f.mesh.geometry.attributes.position as THREE.BufferAttribute;
       for (let i = 0; i < p.count; i++) {
-        f.vel[i * 3 + 1] -= 2.2 * sdt;
+        f.vel[i * 3 + 1] -= 1.6 * sdt;
+        const drag = 1 - 1.4 * sdt;
+        f.vel[i * 3] *= drag;
+        f.vel[i * 3 + 1] *= drag;
+        f.vel[i * 3 + 2] *= drag;
         p.setXYZ(i, p.getX(i) + f.vel[i * 3] * sdt, p.getY(i) + f.vel[i * 3 + 1] * sdt, p.getZ(i) + f.vel[i * 3 + 2] * sdt);
       }
       p.needsUpdate = true;
-      (f.mesh.material as THREE.PointsMaterial).opacity = Math.max(0, 1 - f.t / 1.8);
+      const fade = Math.max(0, 1 - f.t / 1.8);
+      (f.mesh.material as THREE.PointsMaterial).opacity = f.t > 0.9 ? fade * (0.6 + 0.4 * Math.sin(f.t * 40)) : fade;
       if (f.t > 1.8) {
         this.scene.remove(f.mesh);
         f.mesh.geometry.dispose();
@@ -1619,7 +1712,7 @@ function makeDust() {
   const pos = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) pos.set([(Math.random() - 0.5) * 4.5, 0.9 + Math.random() * 1.9, -2.3 + Math.random() * 3], i * 3);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  return new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffc27a, size: 0.012, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ map: softDot(), color: 0xffc27a, size: 0.02, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
 }
 
 function crowdTexture() {

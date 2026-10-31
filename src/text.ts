@@ -4,6 +4,9 @@ import type { CardId, BetEvent } from './core/types';
 export const ltr = (s: string | number) => `<bdi dir="ltr">${s}</bdi>`;
 export const fr = (n: number, d: number) => ltr(`${n}/${d}`);
 
+/** Painted card art (public/cards); the emoji stays as the alt text and the fallback. */
+export const cardArt = (id: CardId, cls = 'art') => `<img class="${cls}" src="${import.meta.env.BASE_URL}cards/${id}.jpg" alt="${CARD_INFO[id].icon}" draggable="false">`;
+
 export const CARD_INFO: Record<CardId, { name: string; icon: string; desc: string; c1: string; c2: string }> = {
   peek: { name: 'הצצה', icon: '👀', desc: 'רואים מה המנה הבאה — רק אתם.', c1: '#7a3cd6', c2: '#36146e' },
   eject: { name: 'פליטה', icon: '🌀', desc: 'המנה הבאה עף החוצה ונחשף לכולם. התור נשאר שלך.', c1: '#e8a628', c2: '#8a4a08' },

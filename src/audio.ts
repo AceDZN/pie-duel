@@ -9,6 +9,8 @@ const MUSIC: Record<number, { root: number; bpm: number; wave: OscillatorType; m
   5: { root: 63, bpm: 120, wave: 'triangle' },
 };
 const MELODY = [0, 4, 7, 12, 11, 7, 9, 7, 5, 4, 2, 4, 0, 2, 4, 5, 7, 9, 7, 5, 4, 2, -1, 0];
+// the B phrase: higher and bouncier, so the loop is A A B A rather than one phrase forever
+const MELODY_B = [12, 11, 9, 7, 9, 12, 14, 12, 9, 7, 5, 7, 9, 7, 5, 4, 5, 7, 9, 11, 12, 7, 4, 2];
 
 export class Sfx {
   private ctx: AudioContext | null = null;
@@ -70,6 +72,37 @@ export class Sfx {
       o.start(t);
       o.stop(t + dur + 0.05);
     };
+    // one shared noise buffer for the brushed kit (kick thump + hat tick)
+    const nb = this.ctx.createBuffer(1, Math.ceil(this.ctx.sampleRate * 0.12), this.ctx.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    const hat = (t: number, vol: number) => {
+      const src = this.ctx!.createBufferSource();
+      src.buffer = nb;
+      const f = this.ctx!.createBiquadFilter();
+      f.type = 'highpass';
+      f.frequency.value = 6500;
+      const g = this.ctx!.createGain();
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+      src.connect(f);
+      f.connect(g);
+      g.connect(this.musicGain!);
+      src.start(t);
+      src.stop(t + 0.08);
+    };
+    const kick = (t: number) => {
+      const o = this.ctx!.createOscillator();
+      const g = this.ctx!.createGain();
+      o.frequency.setValueAtTime(120, t);
+      o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      g.gain.setValueAtTime(0.6, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g);
+      g.connect(this.musicGain!);
+      o.start(t);
+      o.stop(t + 0.2);
+    };
     const tick = () => {
       if (!this.ctx) return;
       while (this.nextNote < this.ctx.currentTime + 0.25) {
@@ -82,7 +115,12 @@ export class Sfx {
           note(midi(chord - 12 + third), t, beat * 0.5, 0.18, cfg.wave === 'sawtooth' ? 'square' : cfg.wave);
           note(midi(chord - 12 + 7), t, beat * 0.5, 0.18, cfg.wave === 'sawtooth' ? 'square' : cfg.wave);
         }
-        const m = MELODY[this.step % MELODY.length] + (cfg.minor && [4, 9, 11].includes(((MELODY[this.step % MELODY.length] % 12) + 12) % 12) ? -1 : 0);
+        if (b === 0) kick(t);
+        else hat(t, b === 1 ? 0.12 : 0.07);
+        // A A B A: every third pass of the phrase takes the B tune
+        const phrase = Math.floor(this.step / MELODY.length) % 4 === 2 ? MELODY_B : MELODY;
+        const raw = phrase[this.step % phrase.length];
+        const m = raw + (cfg.minor && [4, 9, 11].includes(((raw % 12) + 12) % 12) ? -1 : 0);
         note(midi(cfg.root + 12 + m), t, beat * 0.8, 0.22, cfg.wave);
         this.nextNote += beat;
         this.step++;
