@@ -67,3 +67,13 @@ export function logEvent(e: LearnEvent) {
 export function sessionLog() {
   return memLog;
 }
+
+/** Every logged event on this device (the notebook's source), oldest first. */
+export function allEvents(): LearnEvent[] {
+  try {
+    const all = JSON.parse(localStorage.getItem(LOG_KEY) ?? '[]');
+    return Array.isArray(all) ? all : memLog;
+  } catch {
+    return memLog;
+  }
+}

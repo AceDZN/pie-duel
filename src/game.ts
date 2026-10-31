@@ -8,8 +8,9 @@ import { BOOTH_SUBJECTS } from './themes';
 import { generateNight } from './core/endless';
 import type { Stage, Seat } from './scene';
 import type { Sfx } from './audio';
-import { loadSave, logEvent, writeSave, type Save } from './save';
-import { BET_NAME, CARD_INFO, NEW_IN_LEVEL, count, rivalVerb, DUD_SVG, FACE_YOU, MYSTERY_SVG, PIE_SVG, RIVAL_FACE, RULES_HTML, fr, ltr } from './text';
+import { allEvents, loadSave, logEvent, writeSave, type Save } from './save';
+import { stickers, subjectRows } from './progress';
+import { BET_NAME, CARD_INFO, cardArt, NEW_IN_LEVEL, count, rivalVerb, DUD_SVG, FACE_YOU, MYSTERY_SVG, PIE_SVG, RIVAL_FACE, RULES_HTML, fr, ltr } from './text';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -138,7 +139,7 @@ export class Game {
           L.rival.seats === 2 ? `<img src="${img}" alt="" class="twin a"/><img src="${this.stage.portrait(L.rival.model, 0xb8d8ff)}" alt="" class="twin b"/>` : `<img src="${img}" alt=""/>`
         }</div><div class="rival">${b.rival}</div><div class="tokens">${b.levels.map(token).join('')}</div></div>`;
       }).join('')}</div>
-      <div class="row-btns"><button class="btn pink big" id="btn-go">${this.expertMode ? '🔥 ' : ''}שחקו! <small>שלב ${ltr(next)}</small></button>${this.save.passed[4] ? `<button class="btn cyan" id="btn-night2">🎡 לילה בקרנבל <small>(תערובות חדשות בכל לילה)</small></button>` : ''}</div>`;
+      <div class="row-btns"><button class="btn dark" id="btn-notebook">📒 המחברת שלי</button><button class="btn pink big" id="btn-go">${this.expertMode ? '🔥 ' : ''}שחקו! <small>שלב ${ltr(next)}</small></button>${this.save.passed[4] ? `<button class="btn cyan" id="btn-night2">🎡 לילה בקרנבל <small>(תערובות חדשות בכל לילה)</small></button>` : ''}</div>`;
     s.querySelectorAll<HTMLButtonElement>('.token').forEach((b) => (b.onclick = () => this.startLevel(Number(b.dataset.id), undefined, this.expertMode)));
     $('btn-back').onclick = () => this.showTitle();
     document.getElementById('mode-normal')?.addEventListener('click', () => {
@@ -153,6 +154,47 @@ export class Game {
     });
     $('btn-go').onclick = () => this.startLevel(next, undefined, this.expertMode && !!this.save.passed[next]);
     document.getElementById('btn-night2')?.addEventListener('click', () => this.startNight(1));
+    $('btn-notebook').onclick = () => {
+      this.sfx.click();
+      this.showNotebook();
+    };
+  }
+
+  /** The progress notebook: how well each subject is going, what to replay, and stickers. */
+  showNotebook() {
+    const rows = subjectRows(allEvents());
+    const st = stickers(this.save, allEvents());
+    const subj = rows
+      .map((r) => {
+        const b = BOOTHS.find((x) => x.id === r.booth)!;
+        const pct = r.recent === null ? null : Math.round(r.recent * 100);
+        const tone = pct === null ? 'none' : pct >= 80 ? 'good' : pct >= 60 ? 'mid' : 'low';
+        const tip =
+          r.decisions === 0
+            ? this.unlocked(b.levels[0])
+              ? 'עוד לא שיחקתם כאן.'
+              : '🔒 נפתח בהמשך.'
+            : r.replay
+              ? `כדאי לחזור על <button class="link" data-replay="${r.replay}">שלב ${ltr(r.replay)} — ${levelById(r.replay).title}</button>`
+              : pct !== null && pct >= 80
+                ? 'שולטים בזה! נסו את מצב המומחה 🔥'
+                : 'עוד קצת תרגול וזה שלכם.';
+        return `<div class="nb-row ${tone}"><div class="nb-head"><b>${b.name}</b><span>${BOOTH_SUBJECTS[r.booth as 1].subject}</span></div>
+          <div class="nb-bar" role="img" aria-label="${pct === null ? 'אין נתונים' : `${pct}% החלטות נכונות`}"><i style="width:${pct ?? 0}%"></i><em>${pct === null ? '—' : ltr(`${pct}%`)}</em></div>
+          <div class="nb-tip">${tip}${r.decisions ? ` <small>(${ltr(`${r.correct}/${r.decisions}`)} החלטות לפי הסיכויים)</small>` : ''}</div></div>`;
+      })
+      .join('');
+    const got = st.filter((x) => x.earned).length;
+    const grid = st.map((x) => `<div class="sticker ${x.earned ? 'on' : ''}" title="${x.how}"><span>${x.earned ? x.icon : '❔'}</span><b>${x.name}</b><small>${x.how}</small></div>`).join('');
+    this.overlay(
+      `<h2>📒 המחברת שלי</h2><p class="nb-sub">אחוז ההחלטות שהתאימו לסיכויים בכל נושא (${ltr(30)} ההחלטות האחרונות). המזל לא נספר — רק ההחלטה.</p>
+      <div class="nb">${subj}</div><h3 class="nb-st">מדבקות ${ltr(`${got}/${st.length}`)}</h3><div class="stickers">${grid}</div>
+      <div class="row-btns"><button class="btn gold" id="ov-close">סגירה</button></div>`,
+      { 'ov-close': () => this.closeOverlay() },
+    );
+    $('panel-box')
+      .querySelectorAll<HTMLButtonElement>('[data-replay]')
+      .forEach((b) => (b.onclick = () => this.startLevel(Number(b.dataset.replay))));
   }
 
   showHow() {
@@ -186,6 +228,7 @@ export class Game {
 
   /** expert mode toggle on the midway (applies to levels you've passed). */
   expertMode = false;
+  private stickersHad = new Set<string>();
 
   private key(id: number) {
     return this.level.expert ? id + 1000 : id;
@@ -193,6 +236,7 @@ export class Game {
 
   startLevel(id: number, def?: LevelDef, expert = false) {
     this.sfx.unlock();
+    this.stickersHad = new Set(stickers(this.save, allEvents()).filter((x) => x.earned).map((x) => x.id));
     this.level = def ?? (expert ? expertLevel(levelById(id)) : levelById(id));
     const sameLevel = this.duel?.level.id === id && !!this.duel?.level.expert === !!this.level.expert;
     this.attempt = (this.attempt && sameLevel ? this.attempt : 0) + 1;
@@ -830,7 +874,7 @@ export class Game {
         .map((c, i) => {
           const info = CARD_INFO[c];
           const can = d.chips >= CARD_PRICE[c] && d.hand.length < 3;
-          return `<button class="shop-card" data-i="${i}" style="--c1:${info.c1};--c2:${info.c2}" ${can ? '' : 'disabled'}><h3>${info.name}</h3><div class="art">${info.icon}</div><p>${info.desc}</p><div class="price"><span class="chip-ico"></span>${ltr(CARD_PRICE[c])}</div></button>`;
+          return `<button class="shop-card" data-i="${i}" style="--c1:${info.c1};--c2:${info.c2}" ${can ? '' : 'disabled'}><h3>${info.name}</h3>${cardArt(c)}<p>${info.desc}</p><div class="price"><span class="chip-ico"></span>${ltr(CARD_PRICE[c])}</div></button>`;
         })
         .join('')}</div>
       <div class="row-btns"><button class="btn cyan big" id="shop-go">לסיבוב הבא ›</button></div>
@@ -920,9 +964,12 @@ export class Game {
     const next = endless ? null : LEVELS.find((l) => l.id === id + 1);
     const wrong = d.decisions.filter((x) => !x.correct).slice(-1)[0];
     const lesson = wrong ? `<p style="font-size:.9em;opacity:.9">טעות לדוגמה: הסיכוי לעוגה היה ${ltr(str(wrong.pSeen))} ובחרת ${wrong.choice === 'self' ? 'לכוון לעצמך' : wrong.choice === 'rival' ? 'לזרוק על היריב' : CARD_INFO[wrong.choice as CardId]?.name ?? wrong.choice}. ${betterMove(wrong)}</p>` : '';
+    const newStickers = stickers(this.save, allEvents()).filter((x) => x.earned && !this.stickersHad.has(x.id));
+    const stickerLine = newStickers.map((x) => `<p class="unlock">🎉 מדבקה חדשה במחברת: ${x.icon} <b>${x.name}</b></p>`).join('');
+    const timeline = d.decisions.length ? `<div class="timeline" aria-label="ההחלטות שלך בסיבוב">${d.decisions.slice(-14).map((x, i) => decisionChip(x, i)).join('')}</div><p class="timeline-key">🎯 על היריב · 🙃 על עצמך · ✓ לפי הסיכויים</p>` : '';
     if (r.passed && id === 17 && !expert) return this.finale(stars, r.won);
     this.overlay(
-      `<h2>${title}</h2>${stars}<p>${why}</p><p>החלטות לפי הסיכויים: ${ltr(`${r.matchCorrect}/${r.matchDecisions}`)}${d.carry.length ? ` (כולל ניסיונות קודמים: ${ltr(`${r.correct}/${r.total}`)})` : ''}</p>${lesson}
+      `<h2>${title}</h2>${stars}<p>${why}</p><p>החלטות לפי הסיכויים: ${ltr(`${r.matchCorrect}/${r.matchDecisions}`)}${d.carry.length ? ` (כולל ניסיונות קודמים: ${ltr(`${r.correct}/${r.total}`)})` : ''}</p>${timeline}${lesson}${stickerLine}
       ${r.passed && !endless && !expert && next && next.booth !== d.level.booth ? `<p class="unlock">🎪 נפתח דוכן חדש: <b>${BOOTHS.find((b) => b.id === next.booth)!.name}</b> — ${BOOTH_SUBJECTS[next.booth].subject}</p>` : ''}
       ${r.passed && !endless && !expert ? '<p class="unlock">🔥 נפתח מצב מומחה לשלב הזה: בלי מד, יריב חכם יותר.</p>' : ''}
       <div class="row-btns">${r.passed && next && !expert ? `<button class="btn gold" id="ov-next">לשלב הבא ›</button>` : ''}${endless && r.passed ? `<button class="btn gold" id="ov-night">הלילה הבא ›</button>` : ''}<button class="btn ${r.passed ? 'dark' : 'pink'}" id="ov-retry">${endless && !r.passed ? 'לילה חדש' : 'שחקו שוב'}</button>${r.passed && !endless && !expert ? `<button class="btn dark" id="ov-expert">🔥 מומחה</button>` : ''}<button class="btn dark" id="ov-select">לשדרת הדוכנים</button></div>`,
@@ -1256,7 +1303,7 @@ export class Game {
     h.innerHTML = d.hand
       .map((c, i) => {
         const info = CARD_INFO[c];
-        return `<button class="card" data-i="${i}" style="--c1:${info.c1};--c2:${info.c2}" title="${info.desc}" ${d.canUse(c) && !this.animating ? '' : 'disabled'}><span class="ico">${info.icon}</span><span>${info.name}</span></button>`;
+        return `<button class="card" data-i="${i}" style="--c1:${info.c1};--c2:${info.c2}" title="${info.desc}" ${d.canUse(c) && !this.animating ? '' : 'disabled'}>${cardArt(c, 'ico')}<span>${info.name}</span></button>`;
       })
       .join('');
     h.querySelectorAll<HTMLButtonElement>('.card').forEach((b) => (b.onclick = () => this.useCard(d.hand[Number(b.dataset.i)])));
@@ -1485,3 +1532,11 @@ void eq;
 void mul;
 void sub;
 void pBet;
+
+/** One decision as a small chip: what the odds were, what you did, and whether it matched. */
+function decisionChip(x: Decision, i = 0) {
+  const what =
+    x.choice === 'rival' ? '🎯' : x.choice === 'self' ? '🙃' : x.kind === 'bet' ? '🌳' : x.choice === 'double' ? '✌️' : x.choice === 'eject' ? '🌀' : '🃏';
+  const label = x.kind === 'bet' ? BET_NAME[x.choice as BetEvent] : x.choice === 'rival' ? 'על היריב' : x.choice === 'self' ? 'על עצמך' : CARD_INFO[x.choice as CardId]?.name ?? '';
+  return `<span class="chip ${x.correct ? 'ok' : 'bad'}" style="--i:${i}" title="${label}"><i>${what}</i>${x.kind === 'bet' ? '' : ltr(str(x.pSeen))}<b>${x.correct ? '✓' : '✗'}</b></span>`;
+}
